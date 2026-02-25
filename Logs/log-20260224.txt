@@ -1,0 +1,1376 @@
+2026-02-24 10:42:16.978 +05:30 [INF] Executed DbCommand (67ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 10:42:17.225 +05:30 [INF] Executed DbCommand (16ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-24 10:42:17.337 +05:30 [INF] Executed DbCommand (37ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-24 10:42:17.349 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-24 10:42:17.355 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-24 10:42:17.358 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 10:42:17.369 +05:30 [INF] Applying migration '20260224051139_AddSubscriptionEngine'.
+2026-02-24 10:42:17.666 +05:30 [INF] Executed DbCommand (277ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Companies" ADD "Status" text NOT NULL DEFAULT '';
+2026-02-24 10:42:17.829 +05:30 [INF] Executed DbCommand (160ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Plans" (
+    "Id" uuid NOT NULL,
+    "Name" text NOT NULL,
+    "MaxEmployees" integer NOT NULL,
+    "PriceMonthly" numeric NOT NULL,
+    "PriceYearly" numeric NOT NULL,
+    "FeatureFlags" text NOT NULL,
+    "IsActive" boolean NOT NULL,
+    CONSTRAINT "PK_Plans" PRIMARY KEY ("Id")
+);
+2026-02-24 10:42:17.883 +05:30 [INF] Executed DbCommand (52ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "CompanySubscriptions" (
+    "Id" uuid NOT NULL,
+    "CompanyId" uuid NOT NULL,
+    "PlanId" uuid NOT NULL,
+    "StartDate" timestamp with time zone NOT NULL,
+    "EndDate" timestamp with time zone NOT NULL,
+    "IsActive" boolean NOT NULL,
+    CONSTRAINT "PK_CompanySubscriptions" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_CompanySubscriptions_Companies_CompanyId" FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_CompanySubscriptions_Plans_PlanId" FOREIGN KEY ("PlanId") REFERENCES "Plans" ("Id") ON DELETE CASCADE
+);
+2026-02-24 10:42:17.888 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_CompanySubscriptions_CompanyId" ON "CompanySubscriptions" ("CompanyId");
+2026-02-24 10:42:17.892 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_CompanySubscriptions_PlanId" ON "CompanySubscriptions" ("PlanId");
+2026-02-24 10:42:17.895 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260224051139_AddSubscriptionEngine', '10.0.3');
+2026-02-24 11:35:02.275 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5432'.
+2026-02-24 11:40:25.161 +05:30 [INF] Executed DbCommand (48ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 11:40:25.343 +05:30 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-24 11:40:25.421 +05:30 [INF] Executed DbCommand (34ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-24 11:40:25.451 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-24 11:40:25.474 +05:30 [INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-24 11:40:25.476 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 11:40:25.483 +05:30 [INF] Applying migration '20260224060445_UpgradeToSaaSv2'.
+2026-02-24 11:40:25.654 +05:30 [INF] Executed DbCommand (141ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "CompanySubscriptions" DROP CONSTRAINT "FK_CompanySubscriptions_Plans_PlanId";
+2026-02-24 11:40:25.681 +05:30 [INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+DROP INDEX "IX_Leaves_CompanyId";
+2026-02-24 11:40:25.990 +05:30 [INF] Executed DbCommand (307ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "LeavePolicies" (
+    "Id" uuid NOT NULL,
+    "CompanyId" uuid NOT NULL,
+    "LeaveTypeName" text NOT NULL,
+    "MaxDaysPerYear" integer NOT NULL,
+    "CarryForwardLimit" integer NOT NULL,
+    "IsActive" boolean NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_LeavePolicies" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_LeavePolicies_Companies_CompanyId" FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+);
+2026-02-24 11:40:26.000 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Notifications" (
+    "Id" uuid NOT NULL,
+    "UserId" uuid NOT NULL,
+    "Title" text NOT NULL,
+    "Message" text NOT NULL,
+    "IsRead" boolean NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_Notifications" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_Notifications_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+);
+2026-02-24 11:40:26.040 +05:30 [INF] Executed DbCommand (38ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_Users_Email" ON "Users" ("Email");
+2026-02-24 11:40:26.060 +05:30 [INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Leaves_CompanyId_StartDate" ON "Leaves" ("CompanyId", "StartDate");
+2026-02-24 11:40:26.066 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_Companies_Name" ON "Companies" ("Name");
+2026-02-24 11:40:26.070 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX "IX_LeavePolicies_CompanyId_LeaveTypeName" ON "LeavePolicies" ("CompanyId", "LeaveTypeName");
+2026-02-24 11:40:26.073 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Notifications_UserId_IsRead" ON "Notifications" ("UserId", "IsRead");
+2026-02-24 11:40:26.233 +05:30 [INF] Executed DbCommand (158ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "CompanySubscriptions" ADD CONSTRAINT "FK_CompanySubscriptions_Plans_PlanId" FOREIGN KEY ("PlanId") REFERENCES "Plans" ("Id") ON DELETE RESTRICT;
+2026-02-24 11:40:26.238 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260224060445_UpgradeToSaaSv2', '10.0.3');
+2026-02-24 15:42:14.346 +05:30 [INF] Executed DbCommand (16ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 15:42:14.535 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-24 15:42:14.623 +05:30 [INF] Executed DbCommand (43ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-24 15:42:14.633 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-24 15:42:14.639 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-24 15:42:14.643 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 15:42:14.651 +05:30 [INF] Applying migration '20260224101152_AddEmailQueue'.
+2026-02-24 15:42:14.774 +05:30 [INF] Executed DbCommand (107ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "EmailQueues" (
+    "Id" uuid NOT NULL,
+    "ToEmail" text NOT NULL,
+    "Subject" text NOT NULL,
+    "Body" text NOT NULL,
+    "Status" integer NOT NULL,
+    "RetryCount" integer NOT NULL,
+    "ErrorMessage" text,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    "SentAt" timestamp with time zone,
+    CONSTRAINT "PK_EmailQueues" PRIMARY KEY ("Id")
+);
+2026-02-24 15:42:14.785 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Permissions" (
+    "Id" uuid NOT NULL,
+    "Name" text NOT NULL,
+    CONSTRAINT "PK_Permissions" PRIMARY KEY ("Id")
+);
+2026-02-24 15:42:14.805 +05:30 [INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "RolePermissions" (
+    "Id" uuid NOT NULL,
+    "RoleName" text NOT NULL,
+    "PermissionName" text NOT NULL,
+    CONSTRAINT "PK_RolePermissions" PRIMARY KEY ("Id")
+);
+2026-02-24 15:42:14.811 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260224101152_AddEmailQueue', '10.0.3');
+2026-02-24 16:04:58.151 +05:30 [INF] User profile is available. Using 'C:\Users\abhis\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-02-24 16:04:58.357 +05:30 [INF] Now listening on: http://localhost:5100
+2026-02-24 16:04:58.362 +05:30 [INF] Application started. Press Ctrl+C to shut down.
+2026-02-24 16:04:58.363 +05:30 [INF] Hosting environment: Development
+2026-02-24 16:04:58.364 +05:30 [INF] Content root path: D:\LMS\lms-api
+2026-02-24 16:04:59.982 +05:30 [INF] Executed DbCommand (107ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:00.036 +05:30 [INF] Executed DbCommand (23ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:05:10.097 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:10.216 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:05:20.287 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:20.290 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:05:30.304 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:30.308 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:05:40.316 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:40.325 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:05:50.336 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:05:50.339 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:00.351 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:00.354 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:10.364 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:10.367 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:20.377 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:20.381 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:30.387 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:30.391 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:40.400 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:40.405 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:06:50.423 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:06:50.426 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:00.435 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:00.441 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:10.449 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:10.456 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:20.460 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:20.464 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:30.474 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:30.479 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:40.489 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:40.494 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:07:50.498 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:07:50.502 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:00.516 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:00.523 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:10.535 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:10.542 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:20.555 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:20.558 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:30.578 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:30.583 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:40.599 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:40.607 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:08:50.616 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:08:50.621 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:00.632 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:00.637 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:10.649 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:10.652 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:20.665 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:20.669 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:30.687 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:30.691 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:40.697 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:40.705 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:09:50.714 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:09:50.718 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:00.780 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:00.783 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:10.790 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:10.796 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:20.801 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:20.808 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:30.822 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:30.828 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:40.838 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:40.843 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:10:50.841 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:10:50.846 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:00.839 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:00.842 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:10.841 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:10.846 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:20.857 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:20.862 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:30.872 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:30.876 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:40.881 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:40.886 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:11:50.905 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:11:50.911 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:00.928 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:00.932 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:10.939 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:10.943 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:20.952 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:20.958 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:30.981 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:30.985 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:40.987 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:40.991 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:12:50.998 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:12:51.000 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:01.013 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:01.017 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:11.019 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:11.022 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:21.043 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:21.047 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:31.056 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:31.058 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:41.067 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:41.071 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:13:51.090 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:13:51.096 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:14:01.094 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:14:01.097 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:14:11.111 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:14:11.116 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:14:21.119 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:14:21.128 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:14:31.140 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:14:31.147 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:14:37.913 +05:30 [INF] Application is shutting down...
+2026-02-24 16:16:13.573 +05:30 [INF] User profile is available. Using 'C:\Users\abhis\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-02-24 16:16:13.977 +05:30 [INF] Now listening on: http://localhost:5100
+2026-02-24 16:16:13.981 +05:30 [INF] Application started. Press Ctrl+C to shut down.
+2026-02-24 16:16:13.983 +05:30 [INF] Hosting environment: Development
+2026-02-24 16:16:13.984 +05:30 [INF] Content root path: D:\LMS\lms-api
+2026-02-24 16:16:15.189 +05:30 [INF] Executed DbCommand (37ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:16:15.222 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:16:25.261 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:16:25.266 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:16:35.349 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:16:35.352 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:16:45.370 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:16:45.374 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:16:55.383 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:16:55.387 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:05.396 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:05.399 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:15.413 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:15.416 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:25.428 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:25.431 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:35.448 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:35.455 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:45.469 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:45.473 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:17:55.487 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:17:55.490 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:05.509 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:05.512 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:15.520 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:15.523 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:25.542 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:25.548 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:35.558 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:35.561 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:45.579 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:45.585 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:18:55.593 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:18:55.596 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:05.608 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:05.611 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:15.617 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:15.620 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:25.633 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:25.637 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:35.644 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:35.649 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:45.655 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:45.659 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:19:55.673 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:19:55.680 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:05.689 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:05.692 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:15.695 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:15.699 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:25.709 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:25.716 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:35.726 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:35.729 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:45.736 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:45.743 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:20:55.749 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:20:55.755 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:05.762 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:05.765 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:15.826 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:15.828 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:25.836 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:25.840 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:35.848 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:35.852 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:45.860 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:45.867 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:21:55.880 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:21:55.887 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:05.905 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:05.908 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:15.915 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:15.919 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:25.929 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:25.932 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:35.953 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:35.960 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:45.965 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:45.967 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:22:55.978 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:22:55.982 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:05.997 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:06.002 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:16.011 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:16.015 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:26.029 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:26.036 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:36.060 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:36.076 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:46.107 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:46.112 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:23:56.117 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:23:56.121 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:06.136 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:06.138 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:16.141 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:16.144 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:26.151 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:26.154 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:36.167 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:36.170 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:46.180 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:46.187 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:24:56.194 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:24:56.199 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:06.206 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:06.210 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:16.222 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:16.226 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:26.242 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:26.246 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:36.251 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:36.253 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:46.266 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:46.269 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:25:56.286 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:25:56.290 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:06.301 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:06.304 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:16.464 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:16.467 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:26.481 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:26.489 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:36.482 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:36.488 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:46.499 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:46.504 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:26:56.518 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:26:56.524 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:27:06.544 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 16:27:06.555 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 16:27:08.297 +05:30 [INF] Application is shutting down...
+2026-02-24 16:27:34.737 +05:30 [INF] Executed DbCommand (23ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 16:27:34.896 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-24 16:27:35.029 +05:30 [INF] Executed DbCommand (61ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-24 16:27:35.038 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-24 16:27:35.054 +05:30 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-24 16:27:35.058 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 16:27:35.064 +05:30 [INF] Applying migration '20260224105724_AddEmailQueueIndexes'.
+2026-02-24 16:27:35.179 +05:30 [INF] Executed DbCommand (102ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_EmailQueues_CreatedAt" ON "EmailQueues" ("CreatedAt");
+2026-02-24 16:27:35.202 +05:30 [INF] Executed DbCommand (20ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_EmailQueues_Status" ON "EmailQueues" ("Status");
+2026-02-24 16:27:35.216 +05:30 [INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260224105724_AddEmailQueueIndexes', '10.0.3');
+2026-02-24 18:13:22.274 +05:30 [INF] Executed DbCommand (16ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 18:13:22.476 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-24 18:13:22.573 +05:30 [INF] Executed DbCommand (40ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-24 18:13:22.585 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-24 18:13:22.591 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-24 18:13:22.593 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-24 18:13:22.602 +05:30 [INF] Applying migration '20260224124256_AddDepartmentToUser'.
+2026-02-24 18:13:22.647 +05:30 [INF] Executed DbCommand (32ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Users" ADD "Department" text NOT NULL DEFAULT '';
+2026-02-24 18:13:22.649 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260224124256_AddDepartmentToUser', '10.0.3');
+2026-02-24 18:42:39.655 +05:30 [INF] Executed DbCommand (48ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Permissions" AS p)
+2026-02-24 18:42:39.933 +05:30 [INF] Executed DbCommand (34ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = Guid), @p3='?', @p4='?' (DbType = Guid), @p5='?', @p6='?' (DbType = Guid), @p7='?', @p8='?' (DbType = Guid), @p9='?', @p10='?' (DbType = Guid), @p11='?', @p12='?' (DbType = Guid), @p13='?'], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p0, @p1);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p2, @p3);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p4, @p5);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p6, @p7);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p8, @p9);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p10, @p11);
+INSERT INTO "Permissions" ("Id", "Name")
+VALUES (@p12, @p13);
+2026-02-24 18:42:39.973 +05:30 [INF] Executed DbCommand (23ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "RolePermissions" AS r)
+2026-02-24 18:42:40.005 +05:30 [INF] Executed DbCommand (18ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?', @p3='?' (DbType = Guid), @p4='?', @p5='?', @p6='?' (DbType = Guid), @p7='?', @p8='?', @p9='?' (DbType = Guid), @p10='?', @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?' (DbType = Guid), @p16='?', @p17='?', @p18='?' (DbType = Guid), @p19='?', @p20='?', @p21='?' (DbType = Guid), @p22='?', @p23='?'], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p0, @p1, @p2);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p3, @p4, @p5);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p6, @p7, @p8);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p9, @p10, @p11);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p12, @p13, @p14);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p15, @p16, @p17);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p18, @p19, @p20);
+INSERT INTO "RolePermissions" ("Id", "PermissionName", "RoleName")
+VALUES (@p21, @p22, @p23);
+2026-02-24 18:42:40.179 +05:30 [INF] User profile is available. Using 'C:\Users\abhis\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-02-24 18:42:40.273 +05:30 [INF] Now listening on: http://localhost:5100
+2026-02-24 18:42:40.275 +05:30 [INF] Application started. Press Ctrl+C to shut down.
+2026-02-24 18:42:40.276 +05:30 [INF] Hosting environment: Development
+2026-02-24 18:42:40.277 +05:30 [INF] Content root path: D:\LMS\lms-api
+2026-02-24 18:42:40.380 +05:30 [INF] Executed DbCommand (26ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:42:40.405 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:42:50.485 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:42:50.488 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:00.501 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:00.506 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:10.518 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:10.522 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:14.952 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/index.html - null null
+2026-02-24 18:43:15.164 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/index.html - 200 null text/html;charset=utf-8 214.4497ms
+2026-02-24 18:43:15.297 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/index.js - null null
+2026-02-24 18:43:15.304 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/index.js - 200 null application/javascript;charset=utf-8 6.9445ms
+2026-02-24 18:43:17.517 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/v1/swagger.json - null null
+2026-02-24 18:43:17.662 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 144.624ms
+2026-02-24 18:43:20.537 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:20.541 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:30.553 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:30.556 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:40.566 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:40.569 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:43:50.585 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:43:50.590 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:00.600 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:44:00.607 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:10.614 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:44:10.619 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:20.631 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:44:20.635 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:30.647 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:44:30.652 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:40.662 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@maxRetry='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."Status" = 0 AND e."RetryCount" < @maxRetry
+2026-02-24 18:44:40.665 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[@cutoffDate='?' (DbType = DateTime)], CommandType='"Text"', CommandTimeout='30']
+SELECT e."Id", e."Body", e."CreatedAt", e."ErrorMessage", e."RetryCount", e."SentAt", e."Status", e."Subject", e."ToEmail"
+FROM "EmailQueues" AS e
+WHERE e."CreatedAt" < @cutoffDate
+2026-02-24 18:44:49.346 +05:30 [INF] Application is shutting down...

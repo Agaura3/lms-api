@@ -1,0 +1,154 @@
+2026-02-23 10:26:55.684 +05:30 [INF] User profile is available. Using 'C:\Users\abhis\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-02-23 10:26:55.837 +05:30 [INF] Now listening on: http://localhost:5100
+2026-02-23 10:26:55.841 +05:30 [INF] Application started. Press Ctrl+C to shut down.
+2026-02-23 10:26:55.842 +05:30 [INF] Hosting environment: Development
+2026-02-23 10:26:55.843 +05:30 [INF] Content root path: D:\LMS\lms-api
+2026-02-23 10:46:08.606 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/index.html - null null
+2026-02-23 10:46:08.973 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/index.html - 200 null text/html;charset=utf-8 384.4854ms
+2026-02-23 10:46:09.059 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/index.js - null null
+2026-02-23 10:46:09.106 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/index.js - 200 null application/javascript;charset=utf-8 47.6806ms
+2026-02-23 10:46:13.898 +05:30 [INF] Request starting HTTP/1.1 GET http://localhost:5100/swagger/v1/swagger.json - null null
+2026-02-23 10:46:14.504 +05:30 [INF] Request finished HTTP/1.1 GET http://localhost:5100/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 606.2964ms
+2026-02-23 11:38:04.781 +05:30 [INF] Application is shutting down...
+2026-02-23 13:47:34.363 +05:30 [INF] Executed DbCommand (60ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-23 13:47:34.579 +05:30 [INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-23 13:47:34.768 +05:30 [INF] Executed DbCommand (115ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-23 13:47:34.780 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-23 13:47:34.785 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-23 13:47:34.790 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-23 13:47:34.799 +05:30 [INF] Applying migration '20260223081706_AddRefreshToken'.
+2026-02-23 13:47:35.032 +05:30 [INF] Executed DbCommand (210ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Users" DROP COLUMN "Name";
+2026-02-23 13:47:35.123 +05:30 [ERR] Failed executing DbCommand (86ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Users" ALTER COLUMN "Role" TYPE integer;
+2026-02-23 13:49:28.871 +05:30 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-23 13:49:30.260 +05:30 [INF] Executed DbCommand (504ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+DROP DATABASE lmsdb WITH (FORCE);
+2026-02-23 13:50:30.078 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5432'.
+2026-02-23 13:50:34.180 +05:30 [INF] Executed DbCommand (3,895ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE DATABASE lmsdb;
+2026-02-23 13:50:34.296 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-23 13:50:34.413 +05:30 [INF] Executed DbCommand (80ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-23 13:50:34.429 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-23 13:50:34.430 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-23 13:50:34.436 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-23 13:50:34.447 +05:30 [INF] Applying migration '20260223082011_InitialCreate'.
+2026-02-23 13:50:34.510 +05:30 [INF] Executed DbCommand (46ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Companies" (
+    "Id" uuid NOT NULL,
+    "Name" text NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_Companies" PRIMARY KEY ("Id")
+);
+2026-02-23 13:50:34.521 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Users" (
+    "Id" uuid NOT NULL,
+    "FullName" character varying(150) NOT NULL,
+    "Email" character varying(150) NOT NULL,
+    "PasswordHash" text NOT NULL,
+    "Role" integer NOT NULL,
+    "CompanyId" uuid NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_Users" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_Users_Companies_CompanyId" FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+);
+2026-02-23 13:50:34.533 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Leaves" (
+    "Id" uuid NOT NULL,
+    "StartDate" timestamp with time zone NOT NULL,
+    "EndDate" timestamp with time zone NOT NULL,
+    "Reason" text NOT NULL,
+    "Status" integer NOT NULL,
+    "UserId" uuid NOT NULL,
+    "CompanyId" uuid NOT NULL,
+    CONSTRAINT "PK_Leaves" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_Leaves_Companies_CompanyId" FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_Leaves_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+);
+2026-02-23 13:50:34.549 +05:30 [INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "RefreshTokens" (
+    "Id" uuid NOT NULL,
+    "UserId" uuid NOT NULL,
+    "TokenHash" text NOT NULL,
+    "ExpiresAt" timestamp with time zone NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    "RevokedAt" timestamp with time zone,
+    "ReplacedByTokenHash" text,
+    CONSTRAINT "PK_RefreshTokens" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_RefreshTokens_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+);
+2026-02-23 13:50:34.580 +05:30 [INF] Executed DbCommand (29ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Leaves_CompanyId" ON "Leaves" ("CompanyId");
+2026-02-23 13:50:34.583 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Leaves_UserId" ON "Leaves" ("UserId");
+2026-02-23 13:50:34.586 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_RefreshTokens_UserId" ON "RefreshTokens" ("UserId");
+2026-02-23 13:50:34.589 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Users_CompanyId" ON "Users" ("CompanyId");
+2026-02-23 13:50:34.615 +05:30 [INF] Executed DbCommand (25ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260223082011_InitialCreate', '10.0.3');
+2026-02-23 17:00:59.411 +05:30 [INF] Executed DbCommand (35ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-23 17:00:59.585 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-02-23 17:00:59.700 +05:30 [INF] Executed DbCommand (56ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" character varying(150) NOT NULL,
+    "ProductVersion" character varying(32) NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+2026-02-23 17:00:59.710 +05:30 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-02-23 17:00:59.714 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-23 17:00:59.717 +05:30 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-02-23 17:00:59.723 +05:30 [INF] Applying migration '20260223113041_AddLeaveType'.
+2026-02-23 17:00:59.752 +05:30 [INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Users" ADD "TotalLeaveBalance" integer NOT NULL DEFAULT 0;
+2026-02-23 17:00:59.754 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Users" ADD "UsedLeave" integer NOT NULL DEFAULT 0;
+2026-02-23 17:00:59.757 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Leaves" ADD "LeaveType" integer NOT NULL DEFAULT 0;
+2026-02-23 17:00:59.777 +05:30 [INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "AuditLogs" (
+    "Id" uuid NOT NULL,
+    "UserId" uuid NOT NULL,
+    "Action" text NOT NULL,
+    "EntityName" text NOT NULL,
+    "EntityId" uuid NOT NULL,
+    "CompanyId" uuid NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_AuditLogs" PRIMARY KEY ("Id")
+);
+2026-02-23 17:00:59.780 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260223113041_AddLeaveType', '10.0.3');
