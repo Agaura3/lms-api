@@ -1,0 +1,11 @@
+2026-02-26 14:34:51.318 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://db:5432'.
+2026-02-26 14:39:25.475 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 14:42:54.418 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 14:49:32.503 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 15:03:55.455 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 15:21:17.077 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 15:28:26.934 +05:30 [ERR] An error occurred using the connection to database 'lmsdb' on server 'tcp://localhost:5433'.
+2026-02-26 15:31:42.994 +05:30 [ERR] Failed executing DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
