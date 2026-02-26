@@ -26,21 +26,18 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Host.UseSerilog();
 
 
 // ======================================================
 // DATABASE
 // ======================================================
+
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-
-    if (!string.IsNullOrWhiteSpace(dbPassword))
-        connectionString += $"Password={dbPassword}";
-
     options.UseNpgsql(connectionString);
 });
 
@@ -48,19 +45,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ======================================================
 // CONTROLLERS
 // ======================================================
+
 builder.Services.AddControllers();
 
 
 // ======================================================
 // SIGNALR
 // ======================================================
+
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
 
 // ======================================================
-// REDIS
+// REDIS (OPTIONAL)
 // ======================================================
+
 var redisConnection = builder.Configuration["Redis:ConnectionString"];
 
 if (!string.IsNullOrWhiteSpace(redisConnection))
@@ -69,17 +69,24 @@ if (!string.IsNullOrWhiteSpace(redisConnection))
         ConnectionMultiplexer.Connect(redisConnection));
 }
 
+
 // ======================================================
 // HEALTH CHECKS
 // ======================================================
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration["Redis:ConnectionString"]!);
+
+var healthBuilder = builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString);
+
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    healthBuilder.AddRedis(redisConnection);
+}
 
 
 // ======================================================
 // CORS
 // ======================================================
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -95,6 +102,7 @@ builder.Services.AddCors(options =>
 // ======================================================
 // SWAGGER
 // ======================================================
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -133,6 +141,7 @@ builder.Services.AddSwaggerGen(options =>
 // ======================================================
 // JWT AUTHENTICATION
 // ======================================================
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -180,41 +189,43 @@ builder.Services.AddAuthentication(options =>
 
 
 // ======================================================
-// ENTERPRISE RBAC
+// RBAC
 // ======================================================
+
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("ApplyLeave",
-        policy => policy.Requirements.Add(new PermissionRequirement("ApplyLeave")));
+    options.AddPolicy("ApplyLeave", policy =>
+        policy.Requirements.Add(new PermissionRequirement("ApplyLeave")));
 
-    options.AddPolicy("ApproveLeave",
-        policy => policy.Requirements.Add(new PermissionRequirement("ApproveLeave")));
+    options.AddPolicy("ApproveLeave", policy =>
+        policy.Requirements.Add(new PermissionRequirement("ApproveLeave")));
 
-    options.AddPolicy("RejectLeave",
-        policy => policy.Requirements.Add(new PermissionRequirement("RejectLeave")));
+    options.AddPolicy("RejectLeave", policy =>
+        policy.Requirements.Add(new PermissionRequirement("RejectLeave")));
 
-    options.AddPolicy("CancelLeave",
-        policy => policy.Requirements.Add(new PermissionRequirement("CancelLeave")));
+    options.AddPolicy("CancelLeave", policy =>
+        policy.Requirements.Add(new PermissionRequirement("CancelLeave")));
 
-    options.AddPolicy("ViewDashboard",
-        policy => policy.Requirements.Add(new PermissionRequirement("ViewDashboard")));
+    options.AddPolicy("ViewDashboard", policy =>
+        policy.Requirements.Add(new PermissionRequirement("ViewDashboard")));
 
-    options.AddPolicy("ViewReports",
-        policy => policy.Requirements.Add(new PermissionRequirement("ViewReports")));
+    options.AddPolicy("ViewReports", policy =>
+        policy.Requirements.Add(new PermissionRequirement("ViewReports")));
 
-    options.AddPolicy("AdminAccess",
-        policy => policy.Requirements.Add(new PermissionRequirement("AdminAccess")));
+    options.AddPolicy("AdminAccess", policy =>
+        policy.Requirements.Add(new PermissionRequirement("AdminAccess")));
 
-    options.AddPolicy("ManagementAccess",
-        policy => policy.Requirements.Add(new PermissionRequirement("ManagementAccess")));
+    options.AddPolicy("ManagementAccess", policy =>
+        policy.Requirements.Add(new PermissionRequirement("ManagementAccess")));
 });
 
 
 // ======================================================
 // EMAIL BACKGROUND SERVICE
 // ======================================================
+
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
@@ -222,6 +233,7 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 // ======================================================
 // RATE LIMITING
 // ======================================================
+
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("global", opt =>
@@ -244,16 +256,13 @@ builder.Services.AddRateLimiter(options =>
 
 
 // ======================================================
-// BUILD APP
+// BUILD
 // ======================================================
+
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 
-
-// ======================================================
-// MIDDLEWARE PIPELINE
-// ======================================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -263,7 +272,6 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 
-// 🔥 Health Endpoints
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
@@ -278,6 +286,7 @@ if (isSaaS)
 }
 
 app.UseAuthorization();
+
 app.MapControllers();
 app.MapHub<NotificationHub>("/notificationHub");
 
