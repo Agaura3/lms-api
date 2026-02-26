@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Text;
 using System.Threading.RateLimiting;
-using StackExchange.Redis;
 using Serilog;
 using Serilog.Events;
 using lms_api.Data;
@@ -17,37 +16,42 @@ using lms_api.Services;
 using lms_api.BackgroundServices;
 using lms_api.Models;
 
+// ======================================================
+// LOGGING CONFIGURATION
+// ======================================================
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-
 // ======================================================
-// DATABASE
+// DATABASE CONFIGURATION
 // ======================================================
 
-var connectionString =
-    builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new Exception("❌ Database connection string is not configured.");
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
 });
 
-
 // ======================================================
 // CONTROLLERS
 // ======================================================
 
 builder.Services.AddControllers();
-
 
 // ======================================================
 // SIGNALR
@@ -56,43 +60,12 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
-
-// ======================================================
-// REDIS (OPTIONAL)
-// ======================================================
-
-// ======================================================
-// REDIS (SAFE OPTIONAL MODE)
-// ======================================================
-
-var redisConnection = builder.Configuration["Redis:ConnectionString"];
-
-if (!string.IsNullOrWhiteSpace(redisConnection))
-{
-    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    {
-        var options = ConfigurationOptions.Parse(redisConnection);
-        options.AbortOnConnectFail = false;   // 🔥 IMPORTANT
-        options.ConnectRetry = 2;
-        options.ConnectTimeout = 5000;
-
-        return ConnectionMultiplexer.Connect(options);
-    });
-}
-
-
 // ======================================================
 // HEALTH CHECKS
 // ======================================================
 
-var healthBuilder = builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString);
-
-if (!string.IsNullOrWhiteSpace(redisConnection))
-{
-    healthBuilder.AddRedis(redisConnection);
-}
-
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString, name: "PostgreSQL");
 
 // ======================================================
 // CORS
@@ -102,13 +75,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy
+            .AllowAnyOrigin() // 🔥 Change to specific domain in production
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
-
 
 // ======================================================
 // SWAGGER
@@ -148,10 +120,17 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 // ======================================================
 // JWT AUTHENTICATION
 // ======================================================
+
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
+             ?? builder.Configuration["Jwt:Key"];
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new Exception("❌ JWT key is not configured.");
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -160,12 +139,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
-                 ?? builder.Configuration["Jwt:Key"];
-
-    var key = Encoding.UTF8.GetBytes(jwtKey!);
-
-    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    options.RequireHttpsMetadata = false; // 🔥 Important for Render
     options.SaveToken = true;
 
     options.TokenValidationParameters = new TokenValidationParameters
@@ -177,7 +151,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 
     options.Events = new JwtBearerEvents
@@ -198,40 +172,23 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
 // ======================================================
-// RBAC
+// AUTHORIZATION (RBAC)
 // ======================================================
 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("ApplyLeave", policy =>
-        policy.Requirements.Add(new PermissionRequirement("ApplyLeave")));
-
-    options.AddPolicy("ApproveLeave", policy =>
-        policy.Requirements.Add(new PermissionRequirement("ApproveLeave")));
-
-    options.AddPolicy("RejectLeave", policy =>
-        policy.Requirements.Add(new PermissionRequirement("RejectLeave")));
-
-    options.AddPolicy("CancelLeave", policy =>
-        policy.Requirements.Add(new PermissionRequirement("CancelLeave")));
-
-    options.AddPolicy("ViewDashboard", policy =>
-        policy.Requirements.Add(new PermissionRequirement("ViewDashboard")));
-
-    options.AddPolicy("ViewReports", policy =>
-        policy.Requirements.Add(new PermissionRequirement("ViewReports")));
-
-    options.AddPolicy("AdminAccess", policy =>
-        policy.Requirements.Add(new PermissionRequirement("AdminAccess")));
-
-    options.AddPolicy("ManagementAccess", policy =>
-        policy.Requirements.Add(new PermissionRequirement("ManagementAccess")));
+    options.AddPolicy("ApplyLeave", p => p.Requirements.Add(new PermissionRequirement("ApplyLeave")));
+    options.AddPolicy("ApproveLeave", p => p.Requirements.Add(new PermissionRequirement("ApproveLeave")));
+    options.AddPolicy("RejectLeave", p => p.Requirements.Add(new PermissionRequirement("RejectLeave")));
+    options.AddPolicy("CancelLeave", p => p.Requirements.Add(new PermissionRequirement("CancelLeave")));
+    options.AddPolicy("ViewDashboard", p => p.Requirements.Add(new PermissionRequirement("ViewDashboard")));
+    options.AddPolicy("ViewReports", p => p.Requirements.Add(new PermissionRequirement("ViewReports")));
+    options.AddPolicy("AdminAccess", p => p.Requirements.Add(new PermissionRequirement("AdminAccess")));
+    options.AddPolicy("ManagementAccess", p => p.Requirements.Add(new PermissionRequirement("ManagementAccess")));
 });
-
 
 // ======================================================
 // EMAIL BACKGROUND SERVICE
@@ -239,7 +196,6 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
-
 
 // ======================================================
 // RATE LIMITING
@@ -262,44 +218,38 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0;
     });
 
-    options.RejectionStatusCode = 429;
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-
 // ======================================================
-// BUILD
+// BUILD APP
 // ======================================================
 
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseHttpsRedirection();
 
-app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/ready");
+// ⚠️ Render handles HTTPS externally
+// So avoid forcing HTTPS internally
+// app.UseHttpsRedirection();
 
 app.UseRateLimiter();
 app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
-
-var isSaaS = builder.Configuration.GetValue<bool>("AppMode:IsSaaS");
-if (isSaaS)
-{
-    app.UseMiddleware<SubscriptionMiddleware>();
-}
-
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/notificationHub");
+
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready");
+
+// ======================================================
+// AUTO MIGRATION (SAFE)
+// ======================================================
 
 using (var scope = app.Services.CreateScope())
 {
