@@ -61,16 +61,13 @@ builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 // ======================================================
 // REDIS
 // ======================================================
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+var redisConnection = builder.Configuration["Redis:ConnectionString"];
+
+if (!string.IsNullOrWhiteSpace(redisConnection))
 {
-    var configuration = builder.Configuration["Redis:ConnectionString"];
-
-    if (string.IsNullOrWhiteSpace(configuration))
-        throw new Exception("Redis connection string not configured.");
-
-    return ConnectionMultiplexer.Connect(configuration);
-});
-
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect(redisConnection));
+}
 
 // ======================================================
 // HEALTH CHECKS
