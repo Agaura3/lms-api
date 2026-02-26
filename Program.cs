@@ -61,12 +61,23 @@ builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 // REDIS (OPTIONAL)
 // ======================================================
 
+// ======================================================
+// REDIS (SAFE OPTIONAL MODE)
+// ======================================================
+
 var redisConnection = builder.Configuration["Redis:ConnectionString"];
 
 if (!string.IsNullOrWhiteSpace(redisConnection))
 {
-    builder.Services.AddSingleton<IConnectionMultiplexer>(
-        ConnectionMultiplexer.Connect(redisConnection));
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var options = ConfigurationOptions.Parse(redisConnection);
+        options.AbortOnConnectFail = false;   // 🔥 IMPORTANT
+        options.ConnectRetry = 2;
+        options.ConnectTimeout = 5000;
+
+        return ConnectionMultiplexer.Connect(options);
+    });
 }
 
 
