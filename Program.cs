@@ -73,11 +73,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://lms-ui-e5hz.vercel.app",
-                            "https://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-              
+        policy.WithOrigins(
+                "https://lms-ui-e5hz.vercel.app",
+                "http://localhost:4200"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
  
