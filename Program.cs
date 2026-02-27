@@ -75,13 +75,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy
-            .AllowAnyOrigin() // 🔥 Change to specific domain in production
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins("https://lms-ui-e5hz.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
-
 // ======================================================
 // SWAGGER
 // ======================================================
