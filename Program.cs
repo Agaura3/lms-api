@@ -16,9 +16,8 @@ using lms_api.Services;
 using lms_api.BackgroundServices;
 using lms_api.Models;
 
-// ======================================================
 // LOGGING CONFIGURATION
-// ======================================================
+
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -31,9 +30,8 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-// ======================================================
 // DATABASE CONFIGURATION
-// ======================================================
+// 
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -47,42 +45,44 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-// ======================================================
+ 
 // CONTROLLERS
-// ======================================================
+// 
 
 builder.Services.AddControllers();
 
-// ======================================================
+ 
 // SIGNALR
-// ======================================================
+// 
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
-// ======================================================
+ 
 // HEALTH CHECKS
-// ======================================================
+//
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "PostgreSQL");
 
-// ======================================================
+ 
 // CORS
-// ======================================================
+// 
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://lms-ui-e5hz.vercel.app")
+        policy.WithOrigins("https://lms-ui-e5hz.vercel.app",
+                            "https://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod();
+              
     });
 });
-// ======================================================
+ 
 // SWAGGER
-// ======================================================
+// 
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -118,16 +118,16 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// ======================================================
+ 
 // JWT AUTHENTICATION
-// ======================================================
+//
 
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
              ?? builder.Configuration["Jwt:Key"];
 
 if (string.IsNullOrWhiteSpace(jwtKey))
 {
-    throw new Exception("❌ JWT key is not configured.");
+    throw new Exception(" JWT key is not configured.");
 }
 
 builder.Services.AddAuthentication(options =>
@@ -170,10 +170,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ======================================================
-// AUTHORIZATION (RBAC)
-// ======================================================
 
+// AUTHORIZATION (RBAC)
+// 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddAuthorization(options =>
@@ -188,16 +187,16 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ManagementAccess", p => p.Requirements.Add(new PermissionRequirement("ManagementAccess")));
 });
 
-// ======================================================
+
 // EMAIL BACKGROUND SERVICE
-// ======================================================
+// 
 
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
-// ======================================================
+
 // RATE LIMITING
-// ======================================================
+// 
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -219,9 +218,9 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-// ======================================================
+
 // BUILD APP
-// ======================================================
+//
 
 var app = builder.Build();
 
@@ -245,10 +244,9 @@ app.MapHub<NotificationHub>("/notificationHub");
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
-// ======================================================
-// AUTO MIGRATION (SAFE)
-// ======================================================
 
+// AUTO MIGRATION (SAFE)
+// 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

@@ -26,6 +26,84 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
+    // 🔹 REGISTER (First Admin Setup)
+// 🔹 REGISTER (First Admin Setup)
+[HttpPost("register")]
+public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest request)
+{
+    var existingUser = await _context.Users
+        .FirstOrDefaultAsync(u => u.Email == request.AdminEmail);
+
+    if (existingUser != null)
+        return BadRequest(ApiResponse<string>.FailResponse("Admin email already exists"));
+
+    // Create Company
+    var company = new Company
+    {
+        Id = Guid.NewGuid(),
+        Name = request.CompanyName
+    };
+
+    _context.Companies.Add(company);
+
+    var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+    // Create Admin User
+    var adminUser = new User
+    {
+        Id = Guid.NewGuid(),
+        Email = request.AdminEmail,
+        PasswordHash = passwordHash,
+        Role = UserRole.Admin,
+        CompanyId = company.Id
+    };
+
+    _context.Users.Add(adminUser);
+
+    await _context.SaveChangesAsync();
+
+    return Ok(ApiResponse<string>.SuccessResponse("Company and Admin registered successfully"));
+}
+
+// 🔹 REGISTER EMPLOYEE (Admin Only)
+[Authorize(Roles = "Admin")]
+[HttpPost("register-employee")]
+public async Task<IActionResult> RegisterEmployee([FromBody] RegisterEmployeeRequest request)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    if (userId == null)
+        return Unauthorized(ApiResponse<string>.FailResponse("Invalid token"));
+
+    var admin = await _context.Users
+        .FirstOrDefaultAsync(u => u.Id.ToString() == userId);
+
+    if (admin == null)
+        return Unauthorized(ApiResponse<string>.FailResponse("Admin not found"));
+
+    var existingUser = await _context.Users
+        .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+    if (existingUser != null)
+        return BadRequest(ApiResponse<string>.FailResponse("Email already exists"));
+
+    var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+    var employee = new User
+    {
+        Id = Guid.NewGuid(),
+        Email = request.Email,
+        PasswordHash = passwordHash,
+        Role = UserRole.Employee,
+        CompanyId = admin.CompanyId
+    };
+
+    _context.Users.Add(employee);
+    await _context.SaveChangesAsync();
+
+    return Ok(ApiResponse<string>.SuccessResponse("Employee registered successfully"));
+}
+
     // 🔹 LOGIN
     [EnableRateLimiting("auth")]
     [HttpPost("login")]
