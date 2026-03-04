@@ -32,7 +32,7 @@ public class CompanyController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<string>.FailResponse("Invalid request data."));
 
-        if (await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
+        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             return BadRequest(ApiResponse<string>.FailResponse("Email already exists."));
 
         var company = new Company
@@ -47,8 +47,8 @@ public class CompanyController : ControllerBase
         var adminUser = new User
         {
             Id = Guid.NewGuid(),
-            FullName = request.AdminName,
-            Email = request.AdminEmail,
+            FullName = request.Name,
+            Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.Admin,
             CompanyId = company.Id
