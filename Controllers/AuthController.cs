@@ -80,6 +80,10 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
     [HttpPost("register-employee")]
     public async Task<IActionResult> RegisterEmployee([FromBody] RegisterEmployeeRequest request)
     {
+        if (request.Role == UserRole.Admin)
+{
+            return BadRequest("Cannot create another admin");
+}
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId == null)
@@ -104,7 +108,7 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
             Id = Guid.NewGuid(),
             Email = request.Email,
             PasswordHash = passwordHash,
-            Role = UserRole.Employee,
+            Role = request.Role,
             CompanyId = admin.CompanyId,
             FullName = request.Name,
             Department = request.Department
