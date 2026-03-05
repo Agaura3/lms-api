@@ -15,6 +15,7 @@ using lms_api.Hubs;
 using lms_api.Services;
 using lms_api.BackgroundServices;
 using lms_api.Models;
+using System.Text.Json.Serialization;
 
 Console.WriteLine("STEP 1: Starting application");
 
@@ -52,7 +53,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 Console.WriteLine("STEP 5: DbContext configured");
 
 // CONTROLLERS
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
 Console.WriteLine("STEP 6: Controllers added");
 
 // SIGNALR
