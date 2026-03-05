@@ -105,7 +105,9 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
             Email = request.Email,
             PasswordHash = passwordHash,
             Role = UserRole.Employee,
-            CompanyId = admin.CompanyId
+            CompanyId = admin.CompanyId,
+            FullName = request.Name,
+            Department = request.Department
         };
 
         _context.Users.Add(employee);
