@@ -8,7 +8,6 @@ using lms_api.Models;
 using lms_api.Models.Enums;
 using lms_api.Hubs;
 using Microsoft.AspNetCore.RateLimiting;
-using StackExchange.Redis;
 using lms_api.DTOs;
 
 namespace lms_api.Controllers;
@@ -17,29 +16,26 @@ namespace lms_api.Controllers;
 [Route("api/[controller]")]
 public class LeaveController : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IHubContext<NotificationHub> _hubContext;
-    private readonly IConnectionMultiplexer _redis;
+private readonly AppDbContext _context;
+private readonly IHubContext<NotificationHub> _hubContext;
 
-    private IDatabase Cache => _redis.GetDatabase();
 
-    public LeaveController(
-        AppDbContext context,
-        IHubContext<NotificationHub> hubContext,
-        IConnectionMultiplexer redis)
-    {
-        _context = context;
-        _hubContext = hubContext;
-        _redis = redis;
-    }
+public LeaveController(  
+    AppDbContext context,  
+    IHubContext<NotificationHub> hubContext)  
+{  
+    _context = context;  
+    _hubContext = hubContext;  
+}  
 
-    private async Task ClearDashboardCache(Guid companyId)
-    {
-        var currentYear = DateTime.UtcNow.Year;
+private async Task ClearDashboardCache(Guid companyId)  
+{  
+    // Redis removed – no caching implemented for now  
+    await Task.CompletedTask;  
+}  
 
-        await Cache.KeyDeleteAsync($"monthly_trends:{companyId}:{currentYear}");
-        await Cache.KeyDeleteAsync($"dashboard:{companyId}:{currentYear}");
-    }
+
+
 
     // rest of methods...
 
