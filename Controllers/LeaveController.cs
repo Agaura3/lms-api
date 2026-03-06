@@ -9,6 +9,7 @@ using lms_api.Models.Enums;
 using lms_api.Hubs;
 using Microsoft.AspNetCore.RateLimiting;
 using StackExchange.Redis;
+using lms_api.DTOs;
 
 namespace lms_api.Controllers;
 
@@ -47,70 +48,69 @@ public class LeaveController : ControllerBase
     // 🔹 Employee Apply Leave
     // ===================================================
     [Authorize(Policy = "ApplyLeave")]
-    [HttpPost("apply")]
-    public async Task<IActionResult> ApplyLeave(Leave request)
+[HttpPost("apply")]
+public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
+{
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+
+    if (request.EndDate < request.StartDate)
+        return BadRequest("Invalid leave dates.");
+
+    var leaveDays = (request.EndDate - request.StartDate).Days + 1;
+
+    var user = await _context.Users.FindAsync(userId);
+
+    if (user == null)
+        return NotFound("User not found.");
+
+    if ((user.TotalLeaveBalance - user.UsedLeave) < leaveDays)
+        return BadRequest("Insufficient leave balance.");
+
+    var leave = new Leave
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        CompanyId = companyId,
+        StartDate = request.StartDate,
+        EndDate = request.EndDate,
+        Reason = request.Reason,
+        Status = LeaveStatus.Pending
+    };
 
-        if (request.EndDate < request.StartDate)
-            return BadRequest("Invalid leave dates.");
+    _context.Leaves.Add(leave);
 
-        var leaveDays = (request.EndDate - request.StartDate).Days + 1;
+    var managers = await _context.Users
+        .Where(u => u.CompanyId == companyId && u.Role == UserRole.Manager)
+        .ToListAsync();
 
-        var user = await _context.Users.FindAsync(userId);
-
-        if (user == null)
-            return NotFound("User not found.");
-
-        if ((user.TotalLeaveBalance - user.UsedLeave) < leaveDays)
-            return BadRequest("Insufficient leave balance.");
-
-        var leave = new Leave
+    foreach (var manager in managers)
+    {
+        var notification = new Notification
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
-            CompanyId = companyId,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
-            Reason = request.Reason,
-            Status = LeaveStatus.Pending
+            UserId = manager.Id,
+            Title = "New Leave Application",
+            Message = $"{user.FullName} applied for leave.",
+            IsRead = false
         };
 
-        _context.Leaves.Add(leave);
+        _context.Notifications.Add(notification);
 
-        var admins = await _context.Users
-            .Where(u => u.CompanyId == companyId && u.Role == UserRole.Admin)
-            .ToListAsync();
-
-        foreach (var admin in admins)
-        {
-            var notification = new Notification
+        await _hubContext.Clients.User(manager.Id.ToString())
+            .SendAsync("ReceiveNotification", new
             {
-                Id = Guid.NewGuid(),
-                UserId = admin.Id,
-                Title = "New Leave Application",
-                Message = $"{user.FullName} applied for leave.",
-                IsRead = false
-            };
-
-            _context.Notifications.Add(notification);
-
-            await _hubContext.Clients.User(admin.Id.ToString())
-                .SendAsync("ReceiveNotification", new
-                {
-                    notification.Title,
-                    notification.Message,
-                    type = "info"
-                });
-        }
-
-        await _context.SaveChangesAsync();
-        await ClearDashboardCache(companyId);
-
-        return Ok("Leave applied successfully.");
+                notification.Title,
+                notification.Message,
+                type = "info"
+            });
     }
 
+    await _context.SaveChangesAsync();
+    await ClearDashboardCache(companyId);
+
+    return Ok("Leave applied successfully.");
+}
     // ===================================================
     // 🔹 Admin Approve Leave
     // ===================================================
@@ -246,35 +246,35 @@ public class LeaveController : ControllerBase
     // 🔹 Admin Dashboard Summary
     // ===================================================
     [Authorize(Policy = "ViewDashboard")]
-    [HttpGet("dashboard-summary")]
-    public async Task<IActionResult> GetDashboardSummary()
-    {
-        var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+[HttpGet("dashboard-summary")]
+public async Task<IActionResult> GetDashboardSummary()
+{
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
 
-        var totalEmployees = await _context.Users
-            .CountAsync(u => u.CompanyId == companyId && u.Role == UserRole.Employee);
+    var employees = await _context.Users
+        .CountAsync(u => u.CompanyId == companyId && u.Role == UserRole.Employee);
 
-        var totalLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId);
-
-        var pendingLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId && l.Status == LeaveStatus.Pending);
-
-        var approvedLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId && l.Status == LeaveStatus.Approved);
-
-        var rejectedLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId && l.Status == LeaveStatus.Rejected);
-
-        return Ok(new
+    var leaves = await _context.Leaves
+        .Where(l => l.CompanyId == companyId)
+        .GroupBy(l => 1)
+        .Select(g => new
         {
-            totalEmployees,
-            totalLeaves,
-            pendingLeaves,
-            approvedLeaves,
-            rejectedLeaves
-        });
-    }
+            totalLeaves = g.Count(),
+            pendingLeaves = g.Count(x => x.Status == LeaveStatus.Pending),
+            approvedLeaves = g.Count(x => x.Status == LeaveStatus.Approved),
+            rejectedLeaves = g.Count(x => x.Status == LeaveStatus.Rejected)
+        })
+        .FirstOrDefaultAsync();
+
+    return Ok(new
+    {
+        totalEmployees = employees,
+        totalLeaves = leaves?.totalLeaves ?? 0,
+        pendingLeaves = leaves?.pendingLeaves ?? 0,
+        approvedLeaves = leaves?.approvedLeaves ?? 0,
+        rejectedLeaves = leaves?.rejectedLeaves ?? 0
+    });
+}
 
    // ===================================================
 // 🔹 Employee My Leaves
