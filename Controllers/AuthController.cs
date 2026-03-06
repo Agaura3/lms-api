@@ -169,7 +169,7 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim("companyId", user.CompanyId.ToString())
+            new Claim("CompanyId", user.CompanyId.ToString())
         };
 
         var tokenDescriptor = new SecurityTokenDescriptor
