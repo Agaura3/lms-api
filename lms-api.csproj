@@ -27,7 +27,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="StackExchange.Redis" Version="2.11.3" />
+    <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
     <PackageRefrence Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.3" />
     <PackageRefrence Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3" />
 

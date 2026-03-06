@@ -16,6 +16,7 @@ using lms_api.Services;
 using lms_api.BackgroundServices;
 using lms_api.Models;
 using System.Text.Json.Serialization;
+using StackExchange.Redis;
 
 Console.WriteLine("STEP 1: Starting application");
 
@@ -51,6 +52,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 Console.WriteLine("STEP 5: DbContext configured");
+
+// REDIS CONFIGURATION
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    return ConnectionMultiplexer.Connect(configuration);
+});
+
+Console.WriteLine("STEP 5.1: Redis configured");
 
 // CONTROLLERS
 builder.Services.AddControllers()
