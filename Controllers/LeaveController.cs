@@ -47,66 +47,94 @@ private async Task ClearDashboardCache(Guid companyId)
 [HttpPost("apply")]
 public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
 {
-    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
-
-    if (request.EndDate < request.StartDate)
-        return BadRequest("Invalid leave dates.");
-
-    var leaveDays = (request.EndDate - request.StartDate).Days + 1;
-
-    var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-    if (user == null)
-        return NotFound("User not found.");
-
-    if ((user.TotalLeaveBalance - user.UsedLeave) < leaveDays)
-        return BadRequest("Insufficient leave balance.");
-
-    var leave = new Leave
-{
-    Id = Guid.NewGuid(),
-    UserId = userId,
-    CompanyId = companyId,
-    StartDate = request.StartDate,
-    EndDate = request.EndDate,
-    Reason = request.Reason,
-    LeaveType = request.LeaveType,
-    Status = LeaveStatus.Pending
-};
-
-    _context.Leaves.Add(leave);
-
-    var managers = await _context.Users
-        .Where(u => u.CompanyId == companyId && u.Role == UserRole.Manager)
-        .ToListAsync();
-
-    foreach (var manager in managers)
+    try
     {
-        var notification = new Notification
+        // Get userId safely
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized("Invalid user token.");
+
+        // Get companyId safely
+        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+        if (!Guid.TryParse(companyIdClaim, out var companyId))
+            return Unauthorized("Invalid company token.");
+
+        // Validate dates
+        if (request.EndDate < request.StartDate)
+            return BadRequest("Invalid leave dates.");
+
+        var leaveDays = (request.EndDate - request.StartDate).Days + 1;
+
+        // Get user
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+            return NotFound("User not found.");
+
+        // Check leave balance
+        if ((user.TotalLeaveBalance - user.UsedLeave) < leaveDays)
+            return BadRequest("Insufficient leave balance.");
+
+        // Create leave
+        var leave = new Leave
         {
             Id = Guid.NewGuid(),
-            UserId = manager.Id,
-            Title = "New Leave Application",
-            Message = $"{user.FullName} applied for leave.",
-            IsRead = false
+            UserId = userId,
+            CompanyId = companyId,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            Reason = request.Reason,
+            LeaveType = request.LeaveType,
+            Status = LeaveStatus.Pending
         };
 
-        _context.Notifications.Add(notification);
+        _context.Leaves.Add(leave);
 
-        await _hubContext.Clients.User(manager.Id.ToString())
-            .SendAsync("ReceiveNotification", new
+        // Notify managers
+        var managers = await _context.Users
+            .Where(u => u.CompanyId == companyId && u.Role == UserRole.Manager)
+            .ToListAsync();
+
+        foreach (var manager in managers)
+        {
+            var notification = new Notification
             {
-                notification.Title,
-                notification.Message,
-                type = "info"
-            });
+                Id = Guid.NewGuid(),
+                UserId = manager.Id,
+                Title = "New Leave Application",
+                Message = $"{user.FullName} applied for leave.",
+                IsRead = false
+            };
+
+            _context.Notifications.Add(notification);
+
+            await _hubContext.Clients.User(manager.Id.ToString())
+                .SendAsync("ReceiveNotification", new
+                {
+                    notification.Title,
+                    notification.Message,
+                    type = "info"
+                });
+        }
+
+        await _context.SaveChangesAsync();
+
+        await ClearDashboardCache(companyId);
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Leave applied successfully."
+        });
     }
-
-    await _context.SaveChangesAsync();
-    await ClearDashboardCache(companyId);
-
-    return Ok("Leave applied successfully.");
+    catch (Exception ex)
+    {
+        return StatusCode(500, new
+        {
+            Success = false,
+            Message = ex.Message
+        });
+    }
 }
     // ===================================================
     // 🔹 Manager Approve Leave
