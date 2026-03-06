@@ -43,7 +43,7 @@ private async Task ClearDashboardCache(Guid companyId)
     // ===================================================
     // 🔹 Employee Apply Leave
     // ===================================================
-    [Authorize(Policy = "ApplyLeave")]
+    [Authorize]
 [HttpPost("apply")]
 public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
 {
@@ -64,15 +64,16 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
         return BadRequest("Insufficient leave balance.");
 
     var leave = new Leave
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        CompanyId = companyId,
-        StartDate = request.StartDate,
-        EndDate = request.EndDate,
-        Reason = request.Reason,
-        Status = LeaveStatus.Pending
-    };
+{
+    Id = Guid.NewGuid(),
+    UserId = userId,
+    CompanyId = companyId,
+    StartDate = request.StartDate,
+    EndDate = request.EndDate,
+    Reason = request.Reason,
+    LeaveType = request.LeaveType,
+    Status = LeaveStatus.Pending
+};
 
     _context.Leaves.Add(leave);
 
@@ -108,10 +109,10 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
     return Ok("Leave applied successfully.");
 }
     // ===================================================
-    // 🔹 Admin Approve Leave
+    // 🔹 Manager Approve Leave
     // ===================================================
-    [Authorize(Policy = "ApproveLeave")]
-    [HttpPut("approve/{id}")]
+    [Authorize(Roles = "Manager")]
+[HttpPut("approve/{id}")]
     public async Task<IActionResult> ApproveLeave(Guid id)
     {
         var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
@@ -162,9 +163,9 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
     // ===================================================
     // 🔹 Admin Reject Leave
     // ===================================================
-    [Authorize(Policy = "RejectLeave")]
-    [HttpPut("reject/{id}")]
-    public async Task<IActionResult> RejectLeave(Guid id)
+    [Authorize(Roles = "Manager")]
+[HttpPut("reject/{id}")]   
+ public async Task<IActionResult> RejectLeave(Guid id)
     {
         var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
 
