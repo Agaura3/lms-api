@@ -316,21 +316,23 @@ public async Task<IActionResult> GetEmployeeDashboard()
 {
     try
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // get user id from JWT
+        var userIdClaim = User.Claims
+            .FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "nameid")
+            ?.Value;
 
-        if (string.IsNullOrEmpty(userIdClaim))
+        if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized("Invalid token");
 
-        var userId = Guid.Parse(userIdClaim);
+        // fetch all leaves for this user
+        var leaves = await _context.Leaves
+            .Where(l => l.UserId == userId)
+            .ToListAsync();
 
-        var pending = await _context.Leaves
-            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Pending);
-
-        var approved = await _context.Leaves
-            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Approved);
-
-        var rejected = await _context.Leaves
-            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Rejected);
+        // count in memory
+        var pending = leaves.Count(l => l.Status == LeaveStatus.Pending);
+        var approved = leaves.Count(l => l.Status == LeaveStatus.Approved);
+        var rejected = leaves.Count(l => l.Status == LeaveStatus.Rejected);
 
         return Ok(new
         {
@@ -343,8 +345,7 @@ public async Task<IActionResult> GetEmployeeDashboard()
     {
         return StatusCode(500, new
         {
-            message = ex.Message,
-            stack = ex.StackTrace
+            error = ex.Message
         });
     }
 }
