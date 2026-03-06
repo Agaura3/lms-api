@@ -276,14 +276,19 @@ public class LeaveController : ControllerBase
         });
     }
 
-    // ===================================================
+   // ===================================================
 // 🔹 Employee My Leaves
 // ===================================================
 [Authorize]
 [HttpGet("my-leaves")]
 public async Task<IActionResult> GetMyLeaves()
 {
-    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    if (string.IsNullOrEmpty(userIdClaim))
+        return Unauthorized("Invalid token");
+
+    var userId = Guid.Parse(userIdClaim);
 
     var leaves = await _context.Leaves
         .Where(l => l.UserId == userId)
@@ -309,7 +314,12 @@ public async Task<IActionResult> GetMyLeaves()
 [HttpGet("employee-dashboard")]
 public async Task<IActionResult> GetEmployeeDashboard()
 {
-    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    if (string.IsNullOrEmpty(userIdClaim))
+        return Unauthorized("Invalid token");
+
+    var userId = Guid.Parse(userIdClaim);
 
     var pending = await _context.Leaves
         .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Pending);
@@ -335,7 +345,12 @@ public async Task<IActionResult> GetEmployeeDashboard()
 [HttpPut("edit/{id}")]
 public async Task<IActionResult> EditLeave(Guid id, Leave request)
 {
-    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    if (string.IsNullOrEmpty(userIdClaim))
+        return Unauthorized("Invalid token");
+
+    var userId = Guid.Parse(userIdClaim);
 
     var leave = await _context.Leaves
         .FirstOrDefaultAsync(l => l.Id == id && l.UserId == userId);
