@@ -314,30 +314,40 @@ public async Task<IActionResult> GetMyLeaves()
 [HttpGet("employee-dashboard")]
 public async Task<IActionResult> GetEmployeeDashboard()
 {
-    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-    if (string.IsNullOrEmpty(userIdClaim))
-        return Unauthorized("Invalid token");
-
-    var userId = Guid.Parse(userIdClaim);
-
-    var pending = await _context.Leaves
-        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Pending);
-
-    var approved = await _context.Leaves
-        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Approved);
-
-    var rejected = await _context.Leaves
-        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Rejected);
-
-    return Ok(new
+    try
     {
-        pending,
-        approved,
-        rejected
-    });
-}
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+        if (string.IsNullOrEmpty(userIdClaim))
+            return Unauthorized("Invalid token");
+
+        var userId = Guid.Parse(userIdClaim);
+
+        var pending = await _context.Leaves
+            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Pending);
+
+        var approved = await _context.Leaves
+            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Approved);
+
+        var rejected = await _context.Leaves
+            .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Rejected);
+
+        return Ok(new
+        {
+            pending,
+            approved,
+            rejected
+        });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new
+        {
+            message = ex.Message,
+            stack = ex.StackTrace
+        });
+    }
+}
 // ===================================================
 // 🔹 Edit Leave
 // ===================================================
