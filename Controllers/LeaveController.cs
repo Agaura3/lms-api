@@ -55,7 +55,7 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
 
     var leaveDays = (request.EndDate - request.StartDate).Days + 1;
 
-    var user = await _context.Users.FindAsync(userId);
+    var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
     if (user == null)
         return NotFound("User not found.");
@@ -115,7 +115,9 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
 [HttpPut("approve/{id}")]
     public async Task<IActionResult> ApproveLeave(Guid id)
     {
-        var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+            if (!Guid.TryParse(companyIdClaim, out var companyId))
+    return Unauthorized("Invalid company id");
 
         var leave = await _context.Leaves
             .Include(l => l.User)
