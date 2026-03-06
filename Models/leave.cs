@@ -33,7 +33,7 @@ public class Leave
     [ForeignKey("CompanyId")]
     public Company? Company { get; set; }
 
-    public LeaveType LeaveType { get; set; }
+   public string LeaveType { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

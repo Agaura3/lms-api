@@ -4,7 +4,7 @@ namespace lms_api.DTOs;
 
 public class ApplyLeaveRequest
 {
-    public LeaveType LeaveType { get; set; }
+    public string LeaveType { get; set; } = string.Empty;
 
     public DateTime StartDate { get; set; }
 
