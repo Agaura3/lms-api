@@ -275,4 +275,83 @@ public class LeaveController : ControllerBase
             rejectedLeaves
         });
     }
+
+    // ===================================================
+// 🔹 Employee My Leaves
+// ===================================================
+[Authorize]
+[HttpGet("my-leaves")]
+public async Task<IActionResult> GetMyLeaves()
+{
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+    var leaves = await _context.Leaves
+        .Where(l => l.UserId == userId)
+        .OrderByDescending(l => l.StartDate)
+        .Select(l => new
+        {
+            l.Id,
+            l.StartDate,
+            l.EndDate,
+            l.Reason,
+            l.Status,
+            l.LeaveType
+        })
+        .ToListAsync();
+
+    return Ok(leaves);
+}
+
+// ===================================================
+// 🔹 Employee Dashboard
+// ===================================================
+[Authorize]
+[HttpGet("employee-dashboard")]
+public async Task<IActionResult> GetEmployeeDashboard()
+{
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+    var pending = await _context.Leaves
+        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Pending);
+
+    var approved = await _context.Leaves
+        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Approved);
+
+    var rejected = await _context.Leaves
+        .CountAsync(l => l.UserId == userId && l.Status == LeaveStatus.Rejected);
+
+    return Ok(new
+    {
+        pending,
+        approved,
+        rejected
+    });
+}
+
+// ===================================================
+// 🔹 Edit Leave
+// ===================================================
+[Authorize]
+[HttpPut("edit/{id}")]
+public async Task<IActionResult> EditLeave(Guid id, Leave request)
+{
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+    var leave = await _context.Leaves
+        .FirstOrDefaultAsync(l => l.Id == id && l.UserId == userId);
+
+    if (leave == null)
+        return NotFound("Leave not found.");
+
+    if (leave.Status != LeaveStatus.Pending)
+        return BadRequest("Only pending leaves can be edited.");
+
+    leave.StartDate = request.StartDate;
+    leave.EndDate = request.EndDate;
+    leave.Reason = request.Reason;
+
+    await _context.SaveChangesAsync();
+
+    return Ok("Leave updated successfully.");
+}
 }

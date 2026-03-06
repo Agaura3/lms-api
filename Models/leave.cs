@@ -18,22 +18,24 @@ public class Leave
     [Required]
     public string Reason { get; set; } = string.Empty;
 
-    // 🔹 Enum instead of string (Industry level)
     [Required]
     public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
 
-    // 🔹 User Relation
     [Required]
     public Guid UserId { get; set; }
 
     [ForeignKey("UserId")]
     public User? User { get; set; }
 
-    // 🔹 Company Relation (Multi-tenant)
     [Required]
     public Guid CompanyId { get; set; }
 
     [ForeignKey("CompanyId")]
     public Company? Company { get; set; }
+
     public LeaveType LeaveType { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? UpdatedAt { get; set; }
 }

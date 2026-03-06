@@ -7,6 +7,7 @@ using lms_api.Models.Enums;
 namespace lms_api.Models;
     public class User
     {
+    
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]

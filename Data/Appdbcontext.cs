@@ -66,6 +66,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Leave>()
+            .HasOne(l => l.User)
+            .WithMany(u => u.Leaves)
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 
         // =====================================================
         // 🔥 Enterprise Performance Indexing
