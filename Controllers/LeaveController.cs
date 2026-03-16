@@ -260,8 +260,8 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
 
         var leaveDays = (leave.EndDate - leave.StartDate).Days + 1;
 
-        leave.User!.UsedLeave -= leaveDays;
         leave.Status = LeaveStatus.Cancelled;
+        leave.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         await ClearDashboardCache(companyId);
@@ -414,5 +414,63 @@ public async Task<IActionResult> EditLeave(Guid id, Leave request)
     await _context.SaveChangesAsync();
 
     return Ok("Leave updated successfully.");
+}
+
+/// <summary>
+/// Pending Approvals API
+/// </summary>
+/// 
+
+[Authorize(Roles = "Manager")]
+[HttpGet("pending-approvals")]
+public async Task<IActionResult> GetPendingLeaves()
+{
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+
+    var leaves = await _context.Leaves
+        .Include(l => l.User)
+        .Where(l => l.CompanyId == companyId && l.Status == LeaveStatus.Pending)
+        .Select(l => new
+        {
+            l.Id,
+            employee = l.User!.FullName,
+            l.LeaveType,
+            l.StartDate,
+            l.EndDate,
+            l.Reason
+        })
+        .ToListAsync();
+
+    return Ok(leaves);
+}
+
+
+/// <summary>
+/// Manager Leaves Filter API
+/// </summary>
+/// 
+//
+
+[Authorize(Roles = "Manager")]
+[HttpGet("manager-leaves")]
+public async Task<IActionResult> GetManagerLeaves(string status)
+{
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+
+    var leaves = await _context.Leaves
+        .Include(l => l.User)
+        .Where(l => l.CompanyId == companyId && l.Status.ToString() == status)
+        .Select(l => new
+        {
+            l.Id,
+            employee = l.User!.FullName,
+            l.LeaveType,
+            l.StartDate,
+            l.EndDate,
+            l.Status
+        })
+        .ToListAsync();
+
+    return Ok(leaves);
 }
 }
