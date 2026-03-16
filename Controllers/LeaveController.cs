@@ -252,8 +252,8 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
         if (leave == null)
             return NotFound("Leave not found.");
 
-        if (leave.Status != LeaveStatus.Approved)
-            return BadRequest("Only approved leaves can be cancelled.");
+        if (leave.Status != LeaveStatus.Pending)
+            return BadRequest("Only pending leaves can be cancelled.");
 
         if (leave.StartDate <= DateTime.UtcNow.Date)
             return BadRequest("Cannot cancel started leave.");
