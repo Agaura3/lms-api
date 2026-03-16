@@ -238,7 +238,7 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
     // ===================================================
     // 🔹 Employee Cancel Leave
     // ===================================================
-    [Authorize(Policy = "CancelLeave")]
+    [Authorize]
     [HttpPut("cancel/{id}")]
     public async Task<IActionResult> CancelLeave(Guid id)
     {
@@ -351,21 +351,29 @@ public async Task<IActionResult> GetEmployeeDashboard()
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized("Invalid token");
 
-        // fetch all leaves for this user
+        // get user info
+        var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        if (user == null)
+            return NotFound("User not found");
+
+        // fetch leaves
         var leaves = await _context.Leaves
             .Where(l => l.UserId == userId)
             .ToListAsync();
 
-        // count in memory
         var pending = leaves.Count(l => l.Status == LeaveStatus.Pending);
         var approved = leaves.Count(l => l.Status == LeaveStatus.Approved);
         var rejected = leaves.Count(l => l.Status == LeaveStatus.Rejected);
+
+        var remaining = user.TotalLeaveBalance - user.UsedLeave;
 
         return Ok(new
         {
             pending,
             approved,
-            rejected
+            rejected,
+            remaining
         });
     }
     catch (Exception ex)
