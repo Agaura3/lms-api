@@ -32,4 +32,7 @@ public class EmailQueue
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? SentAt { get; set; }
+
+    // 🔥 ADD THIS (VERY IMPORTANT)
+    public DateTime? NextRetryAt { get; set; }
 }

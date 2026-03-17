@@ -141,99 +141,124 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
     // ===================================================
     [Authorize(Roles = "Manager")]
 [HttpPut("approve/{id}")]
-    public async Task<IActionResult> ApproveLeave(Guid id)
+public async Task<IActionResult> ApproveLeave(Guid id)
+{
+    var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+    if (!Guid.TryParse(companyIdClaim, out var companyId))
+        return Unauthorized("Invalid company id");
+
+    var leave = await _context.Leaves
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.Id == id && l.CompanyId == companyId);
+
+    if (leave == null)
+        return NotFound("Leave not found.");
+
+    if (leave.Status != LeaveStatus.Pending)
+        return BadRequest("Leave already processed.");
+
+    var leaveDays = (leave.EndDate - leave.StartDate).Days + 1;
+
+    if ((leave.User!.TotalLeaveBalance - leave.User.UsedLeave) < leaveDays)
+        return BadRequest("Insufficient leave balance.");
+
+    leave.User.UsedLeave += leaveDays;
+    leave.Status = LeaveStatus.Approved;
+
+    // 🔥 Notification
+    var notification = new Notification
     {
-        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
-            if (!Guid.TryParse(companyIdClaim, out var companyId))
-    return Unauthorized("Invalid company id");
+        Id = Guid.NewGuid(),
+        UserId = leave.UserId,
+        Title = "Leave Approved",
+        Message = "Your leave has been approved.",
+        IsRead = false
+    };
 
-        var leave = await _context.Leaves
-            .Include(l => l.User)
-            .FirstOrDefaultAsync(l => l.Id == id && l.CompanyId == companyId);
+    _context.Notifications.Add(notification);
 
-        if (leave == null)
-            return NotFound("Leave not found.");
+    // 🔥 EMAIL QUEUE ADD (MAIN FIX)
+    _context.EmailQueues.Add(new EmailQueue
+    {
+        Id = Guid.NewGuid(),
+        ToEmail = leave.User.Email,
+        Subject = "Leave Approved",
+        Body = $"Dear {leave.User.FullName}, your leave from {leave.StartDate:dd MMM} to {leave.EndDate:dd MMM} has been approved.",
+        Status = EmailStatus.Pending,
+        CreatedAt = DateTime.UtcNow
+    });
 
-        if (leave.Status != LeaveStatus.Pending)
-            return BadRequest("Leave already processed.");
+    await _context.SaveChangesAsync();
+    await ClearDashboardCache(companyId);
 
-        var leaveDays = (leave.EndDate - leave.StartDate).Days + 1;
-
-        if ((leave.User!.TotalLeaveBalance - leave.User.UsedLeave) < leaveDays)
-            return BadRequest("Insufficient leave balance.");
-
-        leave.User.UsedLeave += leaveDays;
-        leave.Status = LeaveStatus.Approved;
-
-        var notification = new Notification
+    await _hubContext.Clients.User(leave.UserId.ToString())
+        .SendAsync("ReceiveNotification", new
         {
-            Id = Guid.NewGuid(),
-            UserId = leave.UserId,
-            Title = "Leave Approved",
-            Message = "Your leave has been approved.",
-            IsRead = false
-        };
+            notification.Title,
+            notification.Message,
+            type = "success"
+        });
 
-        _context.Notifications.Add(notification);
-
-        await _context.SaveChangesAsync();
-        await ClearDashboardCache(companyId);
-
-        await _hubContext.Clients.User(leave.UserId.ToString())
-            .SendAsync("ReceiveNotification", new
-            {
-                notification.Title,
-                notification.Message,
-                type = "success"
-            });
-
-        return Ok("Leave approved successfully.");
-    }
+    return Ok("Leave approved successfully.");
+}
 
     // ===================================================
-    // 🔹 Admin Reject Leave
+    // 🔹 Manager Reject Leave
     // ===================================================
     [Authorize(Roles = "Manager")]
-[HttpPut("reject/{id}")]   
- public async Task<IActionResult> RejectLeave(Guid id)
+[HttpPut("reject/{id}")]
+public async Task<IActionResult> RejectLeave(Guid id)
+{
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+
+    var leave = await _context.Leaves
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.Id == id && l.CompanyId == companyId);
+
+    if (leave == null)
+        return NotFound("Leave not found.");
+
+    if (leave.Status != LeaveStatus.Pending)
+        return BadRequest("Leave already processed.");
+
+    leave.Status = LeaveStatus.Rejected;
+
+    // 🔥 Notification
+    var notification = new Notification
     {
-        var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+        Id = Guid.NewGuid(),
+        UserId = leave.UserId,
+        Title = "Leave Rejected",
+        Message = "Your leave has been rejected.",
+        IsRead = false
+    };
 
-        var leave = await _context.Leaves
-            .FirstOrDefaultAsync(l => l.Id == id && l.CompanyId == companyId);
+    _context.Notifications.Add(notification);
 
-        if (leave == null)
-            return NotFound("Leave not found.");
+    // 🔥 EMAIL QUEUE ADD
+    _context.EmailQueues.Add(new EmailQueue
+    {
+        Id = Guid.NewGuid(),
+        ToEmail = leave.User!.Email,
+        Subject = "Leave Rejected",
+        Body = $"Dear {leave.User.FullName}, your leave request has been rejected.",
+        Status = EmailStatus.Pending,
+        CreatedAt = DateTime.UtcNow
+    });
 
-        if (leave.Status != LeaveStatus.Pending)
-            return BadRequest("Leave already processed.");
+    await _context.SaveChangesAsync();
+    await ClearDashboardCache(companyId);
 
-        leave.Status = LeaveStatus.Rejected;
-
-        var notification = new Notification
+    await _hubContext.Clients.User(leave.UserId.ToString())
+        .SendAsync("ReceiveNotification", new
         {
-            Id = Guid.NewGuid(),
-            UserId = leave.UserId,
-            Title = "Leave Rejected",
-            Message = "Your leave has been rejected.",
-            IsRead = false
-        };
+            notification.Title,
+            notification.Message,
+            type = "error"
+        });
 
-        _context.Notifications.Add(notification);
-
-        await _context.SaveChangesAsync();
-        await ClearDashboardCache(companyId);
-
-        await _hubContext.Clients.User(leave.UserId.ToString())
-            .SendAsync("ReceiveNotification", new
-            {
-                notification.Title,
-                notification.Message,
-                type = "error"
-            });
-
-        return Ok("Leave rejected successfully.");
-    }
+    return Ok("Leave rejected successfully.");
+}
 
     // ===================================================
     // 🔹 Employee Cancel Leave
