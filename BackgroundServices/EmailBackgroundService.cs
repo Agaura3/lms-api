@@ -16,54 +16,58 @@ public class EmailBackgroundService : BackgroundService
         _config = config;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-
-            var maxRetry = int.Parse(_config["EmailSettings:MaxRetryAttempts"]!);
-            var retentionDays = int.Parse(_config["EmailSettings:RetentionDays"]!);
-
-            var pendingEmails = await db.EmailQueues
-                .Where(e => e.Status == EmailStatus.Pending && e.RetryCount < maxRetry)
-                .ToListAsync(stoppingToken);
-
-            foreach (var email in pendingEmails)
-            {
-                try
-                {
-                    await emailService.SendEmailAsync(email.ToEmail, email.Subject, email.Body);
-
-                    email.Status = EmailStatus.Sent;
-                    email.SentAt = DateTime.UtcNow;
-                }
-                catch (Exception ex)
+   protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 {
-    Console.WriteLine("EMAIL ERROR: " + ex.Message); // 🔥 add this
+    while (!stoppingToken.IsCancellationRequested)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-    email.RetryCount++;
-    email.ErrorMessage = ex.Message;
+        var maxRetry = int.Parse(_config["EmailSettings:MaxRetryAttempts"]!);
+        var retentionDays = int.Parse(_config["EmailSettings:RetentionDays"]!);
 
-    if (email.RetryCount >= maxRetry)
-        email.Status = EmailStatus.Failed;
-}
+        var pendingEmails = await db.EmailQueues
+            .Where(e => e.Status == EmailStatus.Pending && e.RetryCount < maxRetry)
+            .ToListAsync(stoppingToken);
+
+        foreach (var email in pendingEmails)
+        {
+            Console.WriteLine("Processing email: " + email.ToEmail);
+
+            try
+            {
+                await emailService.SendEmailAsync(email.ToEmail, email.Subject, email.Body);
+
+                Console.WriteLine("Email sent successfully");
+
+                email.Status = EmailStatus.Sent;
+                email.SentAt = DateTime.UtcNow;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("EMAIL ERROR: " + ex.Message);
 
-            // Retention Cleanup
-            var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
+                email.RetryCount++;
+                email.ErrorMessage = ex.Message;
 
-            var oldEmails = await db.EmailQueues
-                .Where(e => e.CreatedAt < cutoffDate)
-                .ToListAsync(stoppingToken);
-
-            db.EmailQueues.RemoveRange(oldEmails);
-
-            await db.SaveChangesAsync(stoppingToken);
-
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                if (email.RetryCount >= maxRetry)
+                    email.Status = EmailStatus.Failed;
+            }
         }
+
+        // 🔥 Retention Cleanup (YAHI DALNA HAI)
+        var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
+
+        var oldEmails = await db.EmailQueues
+            .Where(e => e.CreatedAt < cutoffDate)
+            .ToListAsync(stoppingToken);
+
+        db.EmailQueues.RemoveRange(oldEmails);
+
+        await db.SaveChangesAsync(stoppingToken);
+
+        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
     }
+}
 }
