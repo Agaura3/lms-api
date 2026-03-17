@@ -180,7 +180,7 @@ builder.Services.AddAuthorization(options =>
 Console.WriteLine("STEP 13: Authorization configured");
 
 // EMAIL BACKGROUND SERVICE
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IEmailService, MailjetEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
 Console.WriteLine("STEP 14: Email service configured");
