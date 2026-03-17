@@ -41,13 +41,15 @@ public class EmailBackgroundService : BackgroundService
                     email.SentAt = DateTime.UtcNow;
                 }
                 catch (Exception ex)
-                {
-                    email.RetryCount++;
-                    email.ErrorMessage = ex.Message;
+{
+    Console.WriteLine("EMAIL ERROR: " + ex.Message); // 🔥 add this
 
-                    if (email.RetryCount >= maxRetry)
-                        email.Status = EmailStatus.Failed;
-                }
+    email.RetryCount++;
+    email.ErrorMessage = ex.Message;
+
+    if (email.RetryCount >= maxRetry)
+        email.Status = EmailStatus.Failed;
+}
             }
 
             // Retention Cleanup
