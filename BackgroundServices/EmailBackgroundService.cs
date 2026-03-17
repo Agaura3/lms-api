@@ -10,14 +10,17 @@ public class EmailBackgroundService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _config;
 
-    public EmailBackgroundService(IServiceScopeFactory scopeFactory, IConfiguration config)
-    {
-        _scopeFactory = scopeFactory;
-        _config = config;
-    }
+   public EmailBackgroundService(IServiceScopeFactory scopeFactory, IConfiguration config)
+{
+    _scopeFactory = scopeFactory;
+    _config = config;
+
+    Console.WriteLine("EmailBackgroundService started"); // 🔥 add this
+}
 
    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 {
+    Console.WriteLine("Background service running...");
     while (!stoppingToken.IsCancellationRequested)
     {
         using var scope = _scopeFactory.CreateScope();
