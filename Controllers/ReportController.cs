@@ -211,65 +211,65 @@ public class ReportController : ControllerBase
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
     [HttpGet("dashboard-analytics")]
-    public async Task<IActionResult> GetDashboardAnalytics(int year)
+public async Task<IActionResult> GetDashboardAnalytics(int year)
+{
+    var totalEmployees = await _context.Users
+        .CountAsync(u => u.CompanyId == CompanyId);
+
+    var totalLeaves = await _context.Leaves
+        .CountAsync(l => l.CompanyId == CompanyId);
+
+    var approved = await _context.Leaves
+        .CountAsync(l => l.CompanyId == CompanyId &&
+                         l.Status == LeaveStatus.Approved);
+
+    var pending = await _context.Leaves
+        .CountAsync(l => l.CompanyId == CompanyId &&
+                         l.Status == LeaveStatus.Pending);
+
+    var rejected = await _context.Leaves
+        .CountAsync(l => l.CompanyId == CompanyId &&
+                         l.Status == LeaveStatus.Rejected);
+
+    var monthlyTrends = await _context.Leaves
+        .Where(l => l.CompanyId == CompanyId &&
+                    l.StartDate.Year == year)
+        .GroupBy(l => l.StartDate.Month)
+        .Select(g => new
+        {
+            month = g.Key,
+            total = g.Count()
+        })
+        .OrderBy(x => x.month)
+        .ToListAsync();
+
+    var leaveTypes = await _context.Leaves
+        .Where(l => l.CompanyId == CompanyId)
+        .GroupBy(l => l.LeaveType)
+        .Select(g => new
+        {
+            type = g.Key.ToString(),
+            count = g.Count()
+        })
+        .ToListAsync();
+
+    var result = new
     {
-        var cacheKey = $"dashboard:{CompanyId}:{year}";
+        totalEmployees,
+        totalLeaves,
+        pendingLeaves = pending,
+        approvedLeaves = approved,
 
-        var cached = await Cache.StringGetAsync(cacheKey);
+        months = monthlyTrends.Select(x => $"M{x.month}"),
+        monthlyLeaves = monthlyTrends.Select(x => x.total),
 
-        if (!cached.IsNullOrEmpty)
-        {
-            var cachedData = JsonSerializer.Deserialize<object>(cached!.ToString());
-            return Ok(cachedData);
-        }
+        casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
+        sickLeaves = leaveTypes.FirstOrDefault(x => x.type == "Sick")?.count ?? 0,
+        earnedLeaves = leaveTypes.FirstOrDefault(x => x.type == "Earned")?.count ?? 0
+    };
 
-        var totalLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId);
-
-        var approved = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId &&
-                             l.Status == LeaveStatus.Approved);
-
-        var pending = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId &&
-                             l.Status == LeaveStatus.Pending);
-
-        var rejected = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId &&
-                             l.Status == LeaveStatus.Rejected);
-
-        var monthlyTrends = await _context.Leaves
-            .Where(l => l.CompanyId == CompanyId &&
-                        l.StartDate.Year == year)
-            .GroupBy(l => l.StartDate.Month)
-            .Select(g => new
-            {
-                Month = g.Key,
-                Total = g.Count()
-            })
-            .OrderBy(x => x.Month)
-            .ToListAsync();
-
-        var result = new
-        {
-            summary = new
-            {
-                totalLeaves,
-                approved,
-                pending,
-                rejected
-            },
-            monthlyTrends
-        };
-
-        await Cache.StringSetAsync(
-            cacheKey,
-            JsonSerializer.Serialize(result),
-            TimeSpan.FromMinutes(5)
-        );
-
-        return Ok(result);
-    }
+    return Ok(result);
+}
 
     // ============================================================
     // 8️⃣ Trend Comparison
