@@ -414,9 +414,8 @@ public async Task<IActionResult> GetEmployeeDashboard()
 // ===================================================
 [Authorize]
 [HttpPut("edit/{id}")]
-public async Task<IActionResult> EditLeave(Guid id, Leave request)
-{
-    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+public async Task<IActionResult> EditLeave(Guid id, EditLeaveRequest request)
+    {var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
     if (string.IsNullOrEmpty(userIdClaim))
         return Unauthorized("Invalid token");
