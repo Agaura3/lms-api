@@ -360,6 +360,33 @@ public async Task<IActionResult> GetMyLeaves()
 }
 
 // ===================================================
+// 🔹 Get Leave By Id
+// ===================================================
+[Authorize]
+[HttpGet("{id}")]
+public async Task<IActionResult> GetLeaveById(Guid id)
+{
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+    var leave = await _context.Leaves
+        .Where(l => l.Id == id && l.UserId == userId)
+        .Select(l => new
+        {
+            l.Id,
+            l.StartDate,
+            l.EndDate,
+            l.Reason,
+            l.Status
+        })
+        .FirstOrDefaultAsync();
+
+    if (leave == null)
+        return NotFound("Leave not found");
+
+    return Ok(leave);
+}
+
+// ===================================================
 // 🔹 Employee Dashboard
 // ===================================================
 [Authorize]
