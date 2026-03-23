@@ -245,7 +245,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         pendingLeaves = pending,
         approvedLeaves = approved,
 
-        months = monthlyTrends.Select(x => $"M{x.month}"),
+        months = monthlyTrends.Select(x => x.month),
         monthlyLeaves = monthlyTrends.Select(x => x.total),
 
         casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
