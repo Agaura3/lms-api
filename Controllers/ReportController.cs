@@ -192,12 +192,13 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-   [HttpGet("dashboard-analytics")]
+  [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
-    var companyId = await _context.Users
-        .Select(u => u.CompanyId)
-        .FirstOrDefaultAsync();
+    var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+
+    if (!Guid.TryParse(companyIdClaim, out var companyId))
+        return Unauthorized("Invalid company token");
 
     var totalEmployees = await _context.Users
         .CountAsync(u => u.CompanyId == companyId);
@@ -218,7 +219,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
                          l.Status == LeaveStatus.Rejected);
 
     var monthlyTrends = await _context.Leaves
-    .Where(l => l.CompanyId == companyId)
+        .Where(l => l.CompanyId == companyId && l.StartDate.Year == year)
         .GroupBy(l => l.StartDate.Month)
         .Select(g => new
         {
