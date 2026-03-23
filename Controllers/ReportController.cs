@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Security.Claims;
+using System.Text.Json;
+using StackExchange.Redis;
 using lms_api.Data;
 using lms_api.Models.Enums;
 
@@ -14,18 +16,18 @@ namespace lms_api.Controllers;
 public class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
-    
+    private readonly IConnectionMultiplexer _redis;
 
-    public ReportController(AppDbContext context)
-{
-    _context = context;
-}
-      
+    public ReportController(AppDbContext context, IConnectionMultiplexer redis)
+    {
+        _context = context;
+        _redis = redis;
+    }
 
     private Guid CompanyId =>
         Guid.Parse(User.FindFirst("CompanyId")!.Value);
 
-   
+    private IDatabase Cache => _redis.GetDatabase();
 
     // ============================================================
     // 1️⃣ Date Range Leave Summary
@@ -53,26 +55,42 @@ public class ReportController : ControllerBase
     // 2️⃣ Monthly Trends (Redis Cached)
     // ============================================================
     [HttpGet("monthly-trends")]
-public async Task<IActionResult> GetMonthlyTrends(int year)
-{
-    var data = await _context.Leaves
-        .AsNoTracking()
-        .Where(l => l.CompanyId == CompanyId &&
-                    l.StartDate.Year == year)
-        .GroupBy(l => l.StartDate.Month)
-        .Select(g => new
-        {
-            Month = g.Key,
-            TotalLeaves = g.Count(),
-            Approved = g.Count(x => x.Status == LeaveStatus.Approved),
-            Pending = g.Count(x => x.Status == LeaveStatus.Pending),
-            Rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
-        })
-        .OrderBy(x => x.Month)
-        .ToListAsync();
+    public async Task<IActionResult> GetMonthlyTrends(int year)
+    {
+        var cacheKey = $"monthly_trends:{CompanyId}:{year}";
 
-    return Ok(data);
-}
+        var cached = await Cache.StringGetAsync(cacheKey);
+
+        if (!cached.IsNullOrEmpty)
+        {
+            var cachedData = JsonSerializer.Deserialize<object>(cached!.ToString());
+            return Ok(cachedData);
+        }
+
+        var data = await _context.Leaves
+            .AsNoTracking()
+            .Where(l => l.CompanyId == CompanyId &&
+                        l.StartDate.Year == year)
+            .GroupBy(l => l.StartDate.Month)
+            .Select(g => new
+            {
+                Month = g.Key,
+                TotalLeaves = g.Count(),
+                Approved = g.Count(x => x.Status == LeaveStatus.Approved),
+                Pending = g.Count(x => x.Status == LeaveStatus.Pending),
+                Rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
+            })
+            .OrderBy(x => x.Month)
+            .ToListAsync();
+
+        await Cache.StringSetAsync(
+            cacheKey,
+            JsonSerializer.Serialize(data),
+            TimeSpan.FromMinutes(5)
+        );
+
+        return Ok(data);
+    }
 
     // ============================================================
     // 3️⃣ Employee-wise Breakdown
@@ -192,29 +210,33 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-    [HttpGet("dashboard-analytics")]
+   [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
+    var companyId = await _context.Users
+        .Select(u => u.CompanyId)
+        .FirstOrDefaultAsync();
+
     var totalEmployees = await _context.Users
-        .CountAsync(u => u.CompanyId == CompanyId);
+        .CountAsync(u => u.CompanyId == companyId);
 
     var totalLeaves = await _context.Leaves
-        .CountAsync(l => l.CompanyId == CompanyId);
+        .CountAsync(l => l.CompanyId == companyId);
 
     var approved = await _context.Leaves
-        .CountAsync(l => l.CompanyId == CompanyId &&
+        .CountAsync(l => l.CompanyId == companyId &&
                          l.Status == LeaveStatus.Approved);
 
     var pending = await _context.Leaves
-        .CountAsync(l => l.CompanyId == CompanyId &&
+        .CountAsync(l => l.CompanyId == companyId &&
                          l.Status == LeaveStatus.Pending);
 
     var rejected = await _context.Leaves
-        .CountAsync(l => l.CompanyId == CompanyId &&
+        .CountAsync(l => l.CompanyId == companyId &&
                          l.Status == LeaveStatus.Rejected);
 
     var monthlyTrends = await _context.Leaves
-        .Where(l => l.CompanyId == CompanyId &&
+        .Where(l => l.CompanyId == companyId &&
                     l.StartDate.Year == year)
         .GroupBy(l => l.StartDate.Month)
         .Select(g => new
@@ -226,7 +248,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         .ToListAsync();
 
     var leaveTypes = await _context.Leaves
-        .Where(l => l.CompanyId == CompanyId)
+        .Where(l => l.CompanyId == companyId)
         .GroupBy(l => l.LeaveType)
         .Select(g => new
         {
