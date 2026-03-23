@@ -218,8 +218,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
                          l.Status == LeaveStatus.Rejected);
 
     var monthlyTrends = await _context.Leaves
-        .Where(l => l.CompanyId == companyId &&
-                    l.StartDate.Year == year)
+    .Where(l => l.CompanyId == companyId)
         .GroupBy(l => l.StartDate.Month)
         .Select(g => new
         {
