@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Security.Claims;
-using System.Text.Json;
-using StackExchange.Redis;
 using lms_api.Data;
 using lms_api.Models.Enums;
 
@@ -16,18 +14,18 @@ namespace lms_api.Controllers;
 public class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly IConnectionMultiplexer _redis;
+    
 
-    public ReportController(AppDbContext context, IConnectionMultiplexer redis)
-    {
-        _context = context;
-        _redis = redis;
-    }
+    public ReportController(AppDbContext context)
+{
+    _context = context;
+}
+      
 
     private Guid CompanyId =>
         Guid.Parse(User.FindFirst("CompanyId")!.Value);
 
-    private IDatabase Cache => _redis.GetDatabase();
+   
 
     // ============================================================
     // 1️⃣ Date Range Leave Summary
@@ -55,42 +53,26 @@ public class ReportController : ControllerBase
     // 2️⃣ Monthly Trends (Redis Cached)
     // ============================================================
     [HttpGet("monthly-trends")]
-    public async Task<IActionResult> GetMonthlyTrends(int year)
-    {
-        var cacheKey = $"monthly_trends:{CompanyId}:{year}";
-
-        var cached = await Cache.StringGetAsync(cacheKey);
-
-        if (!cached.IsNullOrEmpty)
+public async Task<IActionResult> GetMonthlyTrends(int year)
+{
+    var data = await _context.Leaves
+        .AsNoTracking()
+        .Where(l => l.CompanyId == CompanyId &&
+                    l.StartDate.Year == year)
+        .GroupBy(l => l.StartDate.Month)
+        .Select(g => new
         {
-            var cachedData = JsonSerializer.Deserialize<object>(cached!.ToString());
-            return Ok(cachedData);
-        }
+            Month = g.Key,
+            TotalLeaves = g.Count(),
+            Approved = g.Count(x => x.Status == LeaveStatus.Approved),
+            Pending = g.Count(x => x.Status == LeaveStatus.Pending),
+            Rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
+        })
+        .OrderBy(x => x.Month)
+        .ToListAsync();
 
-        var data = await _context.Leaves
-            .AsNoTracking()
-            .Where(l => l.CompanyId == CompanyId &&
-                        l.StartDate.Year == year)
-            .GroupBy(l => l.StartDate.Month)
-            .Select(g => new
-            {
-                Month = g.Key,
-                TotalLeaves = g.Count(),
-                Approved = g.Count(x => x.Status == LeaveStatus.Approved),
-                Pending = g.Count(x => x.Status == LeaveStatus.Pending),
-                Rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
-            })
-            .OrderBy(x => x.Month)
-            .ToListAsync();
-
-        await Cache.StringSetAsync(
-            cacheKey,
-            JsonSerializer.Serialize(data),
-            TimeSpan.FromMinutes(5)
-        );
-
-        return Ok(data);
-    }
+    return Ok(data);
+}
 
     // ============================================================
     // 3️⃣ Employee-wise Breakdown
