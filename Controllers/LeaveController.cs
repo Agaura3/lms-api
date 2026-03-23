@@ -485,6 +485,7 @@ public async Task<IActionResult> GetPendingLeaves()
         {
             l.Id,
             employee = l.User!.FullName,
+            department = l.User.Department, 
             l.LeaveType,
             l.StartDate,
             l.EndDate,
