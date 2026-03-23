@@ -192,10 +192,12 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-  [HttpGet("dashboard-analytics")]
+[HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
-    var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+    var companyIdClaim = User.Claims
+        .FirstOrDefault(c => c.Type == "CompanyId" || c.Type == "companyid")
+        ?.Value;
 
     if (!Guid.TryParse(companyIdClaim, out var companyId))
         return Unauthorized("Invalid company token");
