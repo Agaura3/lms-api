@@ -22,8 +22,19 @@ public class ReportController : ControllerBase
     _context = context;
 }
 
-    private Guid CompanyId =>
-        Guid.Parse(User.FindFirst("CompanyId")!.Value);
+    private Guid CompanyId
+{
+    get
+    {
+        var claim = User.Claims
+            .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
+
+        if (claim == null)
+            throw new Exception("CompanyId claim missing");
+
+        return Guid.Parse(claim.Value);
+    }
+}
 
    
 
