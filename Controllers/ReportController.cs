@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using lms_api.Data;
 using lms_api.Models.Enums;
+using System.Linq;
 
 namespace lms_api.Controllers;
 
@@ -15,27 +16,32 @@ namespace lms_api.Controllers;
 public class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
- 
 
-  public ReportController(AppDbContext context)
-{
-    _context = context;
-}
+    public ReportController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet("debug-claims")]
+    public IActionResult DebugClaims()
+    {
+        return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
+    }
 
     private Guid CompanyId
-{
-    get
     {
-        var claim = User.Claims
-            .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
+        get
+        {
+            var claim = User.Claims
+                .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
 
-        if (claim == null)
-            throw new Exception("CompanyId claim missing");
+            if (claim == null)
+                throw new Exception("CompanyId claim missing");
 
-        return Guid.Parse(claim.Value);
+            return Guid.Parse(claim.Value);
+        }
     }
 }
-
    
 
     // ============================================================
@@ -203,41 +209,45 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-   [HttpGet("dashboard-analytics")]
+  [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
     try
     {
-        var claim = User.Claims
-            .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
+        // ✅ Read CompanyId claim safely
+        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
 
-        if (claim == null)
+        if (string.IsNullOrEmpty(companyIdClaim))
             return Unauthorized("CompanyId missing");
 
-        if (!Guid.TryParse(claim.Value, out var companyId))
+        if (!Guid.TryParse(companyIdClaim, out var companyId))
             return Unauthorized("Invalid company token");
 
         var start = new DateTime(year, 1, 1);
         var end = new DateTime(year + 1, 1, 1);
 
+        // KPI Counts
         var totalEmployees = await _context.Users
-            .CountAsync(u => u.CompanyId == companyId);
+            .Where(u => u.CompanyId == companyId)
+            .CountAsync();
 
         var totalLeaves = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId);
+            .Where(l => l.CompanyId == companyId)
+            .CountAsync();
 
         var approved = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId &&
-                             l.Status == LeaveStatus.Approved);
+            .Where(l => l.CompanyId == companyId && l.Status == LeaveStatus.Approved)
+            .CountAsync();
 
         var pending = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId &&
-                             l.Status == LeaveStatus.Pending);
+            .Where(l => l.CompanyId == companyId && l.Status == LeaveStatus.Pending)
+            .CountAsync();
 
         var rejected = await _context.Leaves
-            .CountAsync(l => l.CompanyId == companyId &&
-                             l.Status == LeaveStatus.Rejected);
+            .Where(l => l.CompanyId == companyId && l.Status == LeaveStatus.Rejected)
+            .CountAsync();
 
+        // Monthly trends
         var monthlyTrends = await _context.Leaves
             .Where(l => l.CompanyId == companyId &&
                         l.StartDate >= start &&
@@ -251,6 +261,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
             .OrderBy(x => x.month)
             .ToListAsync();
 
+        // Leave type distribution
         var leaveTypes = await _context.Leaves
             .Where(l => l.CompanyId == companyId)
             .GroupBy(l => l.LeaveType)
@@ -261,6 +272,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
             })
             .ToListAsync();
 
+        // Convert month numbers → names
         var months = monthlyTrends
             .Select(x => System.Globalization.CultureInfo
                 .CurrentCulture
@@ -287,7 +299,7 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
     }
     catch (Exception ex)
     {
-        return StatusCode(500, ex.Message);
+        return StatusCode(500, ex.ToString());
     }
 }
 }
