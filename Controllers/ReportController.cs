@@ -203,122 +203,91 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-    [HttpGet("dashboard-analytics")]
+   [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
-    var claim = User.Claims
-        .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
-
-    if (claim == null)
-        return Unauthorized("CompanyId missing in token");
-
-    if (!Guid.TryParse(claim.Value, out var companyId))
-        return Unauthorized("Invalid company token");
-
-    var start = new DateTime(year, 1, 1);
-    var end = new DateTime(year + 1, 1, 1);
-
-    // KPI counts
-    var totalEmployees = await _context.Users
-        .CountAsync(u => u.CompanyId == companyId);
-
-    var totalLeaves = await _context.Leaves
-        .CountAsync(l => l.CompanyId == companyId);
-
-    var approved = await _context.Leaves
-        .CountAsync(l => l.CompanyId == companyId &&
-                         l.Status == LeaveStatus.Approved);
-
-    var pending = await _context.Leaves
-        .CountAsync(l => l.CompanyId == companyId &&
-                         l.Status == LeaveStatus.Pending);
-
-    var rejected = await _context.Leaves
-        .CountAsync(l => l.CompanyId == companyId &&
-                         l.Status == LeaveStatus.Rejected);
-
-    // Monthly trends
-    var monthlyTrends = await _context.Leaves
-        .Where(l => l.CompanyId == companyId &&
-                    l.StartDate >= start &&
-                    l.StartDate < end)
-        .GroupBy(l => l.StartDate.Month)
-        .Select(g => new
-        {
-            month = g.Key,
-            total = g.Count()
-        })
-        .OrderBy(x => x.month)
-        .ToListAsync();
-
-    // Leave type distribution
-    var leaveTypes = await _context.Leaves
-        .Where(l => l.CompanyId == companyId)
-        .GroupBy(l => l.LeaveType)
-        .Select(g => new
-        {
-            type = g.Key,
-            count = g.Count()
-        })
-        .ToListAsync();
-
-    var months = monthlyTrends
-        .Select(x => System.Globalization.CultureInfo
-            .CurrentCulture
-            .DateTimeFormat
-            .GetAbbreviatedMonthName(x.month));
-
-    var monthlyLeaves = monthlyTrends.Select(x => x.total);
-
-    var result = new
+    try
     {
-        totalEmployees,
-        totalLeaves,
-        pendingLeaves = pending,
-        approvedLeaves = approved,
-        rejectedLeaves = rejected,
+        var claim = User.Claims
+            .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
 
-        months,
-        monthlyLeaves,
+        if (claim == null)
+            return Unauthorized("CompanyId missing");
 
-        casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
-        sickLeaves = leaveTypes.FirstOrDefault(x => x.type == "Sick")?.count ?? 0,
-        earnedLeaves = leaveTypes.FirstOrDefault(x => x.type == "Earned")?.count ?? 0
-    };
+        if (!Guid.TryParse(claim.Value, out var companyId))
+            return Unauthorized("Invalid company token");
 
-    return Ok(result);
-}
+        var start = new DateTime(year, 1, 1);
+        var end = new DateTime(year + 1, 1, 1);
 
-    // ============================================================
-    // 8️⃣ Trend Comparison
-    // ============================================================
-    [HttpGet("trend-comparison")]
-    public async Task<IActionResult> GetTrendComparison(int year)
-    {
-        var currentYearTotal = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId &&
-                             l.StartDate.Year == year);
+        var totalEmployees = await _context.Users
+            .CountAsync(u => u.CompanyId == companyId);
 
-        var previousYearTotal = await _context.Leaves
-            .CountAsync(l => l.CompanyId == CompanyId &&
-                             l.StartDate.Year == year - 1);
+        var totalLeaves = await _context.Leaves
+            .CountAsync(l => l.CompanyId == companyId);
 
-        double growthPercentage = 0;
+        var approved = await _context.Leaves
+            .CountAsync(l => l.CompanyId == companyId &&
+                             l.Status == LeaveStatus.Approved);
 
-        if (previousYearTotal > 0)
+        var pending = await _context.Leaves
+            .CountAsync(l => l.CompanyId == companyId &&
+                             l.Status == LeaveStatus.Pending);
+
+        var rejected = await _context.Leaves
+            .CountAsync(l => l.CompanyId == companyId &&
+                             l.Status == LeaveStatus.Rejected);
+
+        var monthlyTrends = await _context.Leaves
+            .Where(l => l.CompanyId == companyId &&
+                        l.StartDate >= start &&
+                        l.StartDate < end)
+            .GroupBy(l => l.StartDate.Month)
+            .Select(g => new
+            {
+                month = g.Key,
+                total = g.Count()
+            })
+            .OrderBy(x => x.month)
+            .ToListAsync();
+
+        var leaveTypes = await _context.Leaves
+            .Where(l => l.CompanyId == companyId)
+            .GroupBy(l => l.LeaveType)
+            .Select(g => new
+            {
+                type = g.Key,
+                count = g.Count()
+            })
+            .ToListAsync();
+
+        var months = monthlyTrends
+            .Select(x => System.Globalization.CultureInfo
+                .CurrentCulture
+                .DateTimeFormat
+                .GetAbbreviatedMonthName(x.month));
+
+        var result = new
         {
-            growthPercentage =
-                ((double)(currentYearTotal - previousYearTotal)
-                / previousYearTotal) * 100;
-        }
+            totalEmployees,
+            totalLeaves,
+            pendingLeaves = pending,
+            approvedLeaves = approved,
+            rejectedLeaves = rejected,
 
-        return Ok(new
-        {
-            currentYear = year,
-            currentTotal = currentYearTotal,
-            previousYear = year - 1,
-            previousTotal = previousYearTotal,
-            growthPercentage = Math.Round(growthPercentage, 2)
-        });
+            months,
+            monthlyLeaves = monthlyTrends.Select(x => x.total),
+
+            casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
+            sickLeaves = leaveTypes.FirstOrDefault(x => x.type == "Sick")?.count ?? 0,
+            earnedLeaves = leaveTypes.FirstOrDefault(x => x.type == "Earned")?.count ?? 0
+        };
+
+        return Ok(result);
     }
+    catch (Exception ex)
+    {
+        return StatusCode(500, ex.Message);
+    }
+}
 }
