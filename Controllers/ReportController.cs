@@ -203,16 +203,22 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     // ============================================================
     // 7️⃣ Unified Dashboard Analytics (Redis Cached)
     // ============================================================
-[HttpGet("dashboard-analytics")]
+    [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
-    var companyIdClaim = User.Claims
-        .FirstOrDefault(c => c.Type == "CompanyId" || c.Type == "companyid")
-        ?.Value;
+    var claim = User.Claims
+        .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
 
-    if (!Guid.TryParse(companyIdClaim, out var companyId))
+    if (claim == null)
+        return Unauthorized("CompanyId missing in token");
+
+    if (!Guid.TryParse(claim.Value, out var companyId))
         return Unauthorized("Invalid company token");
 
+    var start = new DateTime(year, 1, 1);
+    var end = new DateTime(year + 1, 1, 1);
+
+    // KPI counts
     var totalEmployees = await _context.Users
         .CountAsync(u => u.CompanyId == companyId);
 
@@ -231,8 +237,11 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         .CountAsync(l => l.CompanyId == companyId &&
                          l.Status == LeaveStatus.Rejected);
 
+    // Monthly trends
     var monthlyTrends = await _context.Leaves
-        .Where(l => l.CompanyId == companyId && l.StartDate.Year == year)
+        .Where(l => l.CompanyId == companyId &&
+                    l.StartDate >= start &&
+                    l.StartDate < end)
         .GroupBy(l => l.StartDate.Month)
         .Select(g => new
         {
@@ -242,15 +251,24 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         .OrderBy(x => x.month)
         .ToListAsync();
 
+    // Leave type distribution
     var leaveTypes = await _context.Leaves
         .Where(l => l.CompanyId == companyId)
         .GroupBy(l => l.LeaveType)
         .Select(g => new
         {
-            type = g.Key.ToString(),
+            type = g.Key,
             count = g.Count()
         })
         .ToListAsync();
+
+    var months = monthlyTrends
+        .Select(x => System.Globalization.CultureInfo
+            .CurrentCulture
+            .DateTimeFormat
+            .GetAbbreviatedMonthName(x.month));
+
+    var monthlyLeaves = monthlyTrends.Select(x => x.total);
 
     var result = new
     {
@@ -258,9 +276,10 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         totalLeaves,
         pendingLeaves = pending,
         approvedLeaves = approved,
+        rejectedLeaves = rejected,
 
-        months = monthlyTrends.Select(x => x.month),
-        monthlyLeaves = monthlyTrends.Select(x => x.total),
+        months,
+        monthlyLeaves,
 
         casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
         sickLeaves = leaveTypes.FirstOrDefault(x => x.type == "Sick")?.count ?? 0,
