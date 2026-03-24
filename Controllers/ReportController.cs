@@ -223,8 +223,8 @@ public async Task<IActionResult> GetDashboardAnalytics(int year)
         if (!Guid.TryParse(companyIdClaim, out var companyId))
             return Unauthorized("Invalid company token");
 
-        var start = new DateTime(year, 1, 1);
-        var end = new DateTime(year + 1, 1, 1);
+        var start = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+var end = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         // KPI Counts
         var totalEmployees = await _context.Users
