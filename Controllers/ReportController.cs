@@ -41,7 +41,7 @@ public class ReportController : ControllerBase
             return Guid.Parse(claim.Value);
         }
     }
-}
+
    
 
     // ============================================================
