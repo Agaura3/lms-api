@@ -11,4 +11,8 @@ public class ApplyLeaveRequest
     public DateTime EndDate { get; set; }
 
     public string Reason { get; set; } = string.Empty;
+
+    public bool IsHalfDay { get; set; }
+
+    public string? HalfDayType { get; set; }
 }

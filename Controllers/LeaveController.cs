@@ -63,7 +63,18 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
         if (request.EndDate < request.StartDate)
             return BadRequest("Invalid leave dates.");
 
-        var leaveDays = (request.EndDate - request.StartDate).Days + 1;
+        double leaveDays;
+        if(request.IsHalfDay)
+            {
+                leaveDays = 0.5;
+            }
+        else
+            {
+                leaveDays = (request.EndDate - request.StartDate).Days + 1; 
+            }
+
+
+        
 
         // Get user
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -85,6 +96,8 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
             EndDate = request.EndDate,
             Reason = request.Reason,
             LeaveType = request.LeaveType,
+            IsHalfDay = request.IsHalfDay,
+            HalfDayType = request.HalfDayType,
             Status = LeaveStatus.Pending
         };
 
@@ -141,7 +154,7 @@ public async Task<IActionResult> ApplyLeave(ApplyLeaveRequest request)
     // ===================================================
     [Authorize(Roles = "Manager")]
 [HttpPut("approve/{id}")]
-public async Task<IActionResult> ApproveLeave(Guid id)
+public async Task<IActionResult> ApproveLeave(Guid id, LeaveAction dto)
 {
     var companyIdClaim = User.FindFirst("CompanyId")?.Value;
     if (!Guid.TryParse(companyIdClaim, out var companyId))
@@ -207,7 +220,7 @@ public async Task<IActionResult> ApproveLeave(Guid id)
     // ===================================================
     [Authorize(Roles = "Manager")]
 [HttpPut("reject/{id}")]
-public async Task<IActionResult> RejectLeave(Guid id)
+public async Task<IActionResult> RejectLeave(Guid id, LeaveAction dto)
 {
     var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
 
@@ -222,6 +235,8 @@ public async Task<IActionResult> RejectLeave(Guid id)
         return BadRequest("Leave already processed.");
 
     leave.Status = LeaveStatus.Rejected;
+leave.ManagerComment = dto.Comment;
+leave.UpdatedAt = DateTime.UtcNow;
 
     // 🔥 Notification
     var notification = new Notification
@@ -487,6 +502,7 @@ public async Task<IActionResult> GetPendingLeaves()
             employee = l.User!.FullName,
             department = l.User.Department, 
             l.LeaveType,
+            priority = l.Priority,
             l.StartDate,
             l.EndDate,
             l.Reason
@@ -520,6 +536,28 @@ public async Task<IActionResult> GetManagerLeaves(string status)
             l.StartDate,
             l.EndDate,
             l.Status
+        })
+        .ToListAsync();
+
+    return Ok(leaves);
+}
+
+[Authorize]
+[HttpGet("leave-calendar")]
+public async Task<IActionResult> GetLeaveCalendar()
+{
+    var companyId = Guid.Parse(User.FindFirst("CompanyId")!.Value);
+
+    var leaves = await _context.Leaves
+        .Include(l => l.User)
+        .Where(l => l.CompanyId == companyId && l.Status == LeaveStatus.Approved)
+        .Select(l => new
+        {
+            employee = l.User!.FullName,
+            department = l.User.Department,
+            startDate = l.StartDate,
+            endDate = l.EndDate,
+            leaveType = l.LeaveType
         })
         .ToListAsync();
 

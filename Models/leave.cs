@@ -35,6 +35,14 @@ public class Leave
 
    public string LeaveType { get; set; } = string.Empty;
 
+   public bool IsHalfDay { get; set; }
+
+   public string? HalfDayType { get; set; } // Morning / Afternoon
+
+   public string? Priority {get; set; }
+
+   public string? ManagerComment { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
