@@ -192,7 +192,7 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
         return tokenHandler.WriteToken(token);
     }
 
-    [HttpPost("forgot-password")]
+  [HttpPost("forgot-password")]
 public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
 {
     var user = await _context.Users
@@ -213,7 +213,19 @@ public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest
     _context.PasswordResetTokens.Add(resetEntity);
     await _context.SaveChangesAsync();
 
-    // TODO: Add email queue entry here
+    var resetLink = $"http://localhost:4200/reset-password?token={resetToken}";
+
+    var email = new EmailQueue
+    {
+        ToEmail = user.Email,
+        Subject = "Reset Your Password",
+        Body = $"Click this link to reset your password: {resetLink}",
+        Status = EmailStatus.Pending,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    _context.EmailQueues.Add(email);
+    await _context.SaveChangesAsync();
 
     return Ok(ApiResponse<string>.SuccessResponse("Reset link sent"));
 }
