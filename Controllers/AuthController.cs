@@ -213,7 +213,7 @@ public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest
     _context.PasswordResetTokens.Add(resetEntity);
     await _context.SaveChangesAsync();
 
-    var resetLink = $"http://localhost:4200/reset-password?token={resetToken}";
+    var resetLink = $"https://lmsorbit.netlify.app/reset-password?token={resetToken}";
 
     var email = new EmailQueue
     {
