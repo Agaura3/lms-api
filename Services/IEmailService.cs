@@ -1,6 +1,9 @@
-namespace lms_api.Services;
 
-public interface IEmailService
+using LMS.API.Services;
+namespace LMS.API.Services
 {
-    Task SendEmailAsync(string toEmail, string subject, string body);
+    public interface IEmailService
+    {
+        Task SendEmailAsync(string to, string subject, string html);
+    }
 }

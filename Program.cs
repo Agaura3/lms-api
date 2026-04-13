@@ -17,11 +17,14 @@ using lms_api.BackgroundServices;
 using lms_api.Models;
 using System.Text.Json.Serialization;
 using StackExchange.Redis;
+using LMS.API.Services;
+using Resend;
+
 
 Console.WriteLine("STEP 1: Starting application");
 
 // LOGGING CONFIGURATION
-Log.Logger = new LoggerConfiguration()
+Serilog.Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
@@ -180,12 +183,21 @@ builder.Services.AddAuthorization(options =>
 
 Console.WriteLine("STEP 13: Authorization configured");
 
+// EMAIL CONFIGURATION FOR RESEND
+builder.Services.AddHttpClient();
+
+builder.Services.Configure<ResendClientOptions>(options =>
+{
+    options.ApiToken = builder.Configuration["Resend:ApiKey"];
+});
+
+builder.Services.AddTransient<ResendClient>();
+
 // EMAIL BACKGROUND SERVICE
-builder.Services.AddScoped<IEmailService, MailjetEmailService>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
 Console.WriteLine("STEP 14: Email service configured");
-
 // RATE LIMITING
 builder.Services.AddRateLimiter(options =>
 {

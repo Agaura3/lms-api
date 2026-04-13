@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using lms_api.Data;
 using lms_api.Models;
-using lms_api.Services;
+using LMS.API.Services;
 
 namespace lms_api.BackgroundServices;
 
@@ -27,13 +27,12 @@ public class EmailBackgroundService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-        var maxRetry = int.Parse(_config["EmailSettings:MaxRetryAttempts"]!);
-        var retentionDays = int.Parse(_config["EmailSettings:RetentionDays"]!);
+       var maxRetry = int.TryParse(_config["EmailSettings:MaxRetryAttempts"], out var mr) ? mr : 3;
+var retentionDays = int.TryParse(_config["EmailSettings:RetentionDays"], out var rd) ? rd : 30;
 
-        var pendingEmails = await db.EmailQueues
-            .Where(e => e.Status == EmailStatus.Pending && e.RetryCount < maxRetry)
-            .ToListAsync(stoppingToken);
-
+var pendingEmails = await db.EmailQueues
+    .Where(e => e.Status == EmailStatus.Pending && e.RetryCount < maxRetry)
+    .ToListAsync(stoppingToken);
         foreach (var email in pendingEmails)
         {
             Console.WriteLine("Processing email: " + email.ToEmail);
