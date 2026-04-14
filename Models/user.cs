@@ -44,4 +44,8 @@ namespace lms_api.Models;
 
         public int UsedLeave { get; set; } = 0;
         public string Department { get; set; } = "General";
+
+        public Guid? ManagerId { get; set; }
+
+public User? Manager { get; set; }
     }
