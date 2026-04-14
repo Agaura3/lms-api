@@ -229,4 +229,28 @@ public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest
 
     return Ok(ApiResponse<string>.SuccessResponse("Reset link sent"));
 }
+
+[HttpPost("reset-password")]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+{
+    var tokenEntity = await _context.PasswordResetTokens
+        .FirstOrDefaultAsync(t => t.Token == request.Token && t.ExpiresAt > DateTime.UtcNow);
+
+    if (tokenEntity == null)
+        return BadRequest(ApiResponse<string>.FailResponse("Invalid or expired token"));
+
+    var user = await _context.Users
+        .FirstOrDefaultAsync(u => u.Id == tokenEntity.UserId);
+
+    if (user == null)
+        return BadRequest(ApiResponse<string>.FailResponse("User not found"));
+
+    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+    _context.PasswordResetTokens.Remove(tokenEntity);
+
+    await _context.SaveChangesAsync();
+
+    return Ok(ApiResponse<string>.SuccessResponse("Password reset successful"));
+}
 }
