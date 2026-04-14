@@ -69,7 +69,7 @@ var pendingEmails = await db.EmailQueues
 
         await db.SaveChangesAsync(stoppingToken);
 
-        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
     }
 }
 }
