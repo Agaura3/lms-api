@@ -20,22 +20,25 @@ public class AdminController : ControllerBase
 
     // ✅ GET EMPLOYEES
     [HttpGet("employees")]
-    public async Task<IActionResult> GetEmployees()
-    {
-        var employees = await _context.Users
-            .Where(u => u.Role != Models.Enums.UserRole.Admin)
-            .Select(u => new {
-                id = u.Id,
-                name = u.FullName,
-                email = u.Email,
-                role = u.Role.ToString(),
-                department = u.Department
-            })
-            .ToListAsync();
+public async Task<IActionResult> GetEmployees()
+{
+    var employees = await _context.Users
+        .Where(u => u.Role != Models.Enums.UserRole.Admin)
+        .Select(u => new {
+            id = u.Id,
+            name = u.FullName,
+            email = u.Email,
+            role = u.Role.ToString(),
+            department = u.Department,
+            managerName = _context.Users
+                .Where(m => m.Id == u.ManagerId)
+                .Select(m => m.FullName)
+                .FirstOrDefault()
+        })
+        .ToListAsync();
 
-        return Ok(employees);
-    }
-
+    return Ok(employees);
+}
     // ✅ DELETE EMPLOYEE
     [HttpDelete("employees/{id}")]
     public async Task<IActionResult> DeleteEmployee(Guid id)
