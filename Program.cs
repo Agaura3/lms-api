@@ -84,7 +84,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "https://lms-ui-e5hz.vercel.app",
                 "http://localhost:4200",
-                "https://lmsorbit.netlify.app"
+                "https://lmsorbit.netlify.app",
+                "https://deeppink-toad-657096.hostingersite.com"
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
