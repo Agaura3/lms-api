@@ -148,5 +148,30 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<EmailQueue>()
             .HasIndex(e => new { e.Status, e.RetryCount });
+
+            // =====================================================
+// 🔹 Default Role Permissions Seed
+// =====================================================
+
+modelBuilder.Entity<RolePermission>().HasData(
+    new RolePermission
+    {
+        Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+        RoleName = "Admin",
+        PermissionName = "ViewDashboard"
+    },
+    new RolePermission
+    {
+        Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        RoleName = "Manager",
+        PermissionName = "ViewDashboard"
+    },
+    new RolePermission
+    {
+        Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+        RoleName = "Employee",
+        PermissionName = "ViewDashboard"
+    }
+);
     }
 }
