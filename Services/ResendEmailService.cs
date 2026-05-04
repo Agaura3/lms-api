@@ -24,7 +24,7 @@ namespace LMS.API.Services
 
             var body = new
             {
-                from = "onboarding@resend.dev",
+                from = "support@brownkites.tech",
                 to = new[] { email },
                 subject = subject,
                 html = html
