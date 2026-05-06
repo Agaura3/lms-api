@@ -312,7 +312,7 @@ leave.UpdatedAt = DateTime.UtcNow;
     // ===================================================
     // 🔹 Admin Dashboard Summary
     // ===================================================
-    [Authorize(Policy = "ViewDashboard")]
+   [Authorize(Policy = "ViewDashboard")]
 [HttpGet("dashboard-summary")]
 public async Task<IActionResult> GetDashboardSummary()
 {
