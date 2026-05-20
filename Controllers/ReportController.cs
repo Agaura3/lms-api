@@ -12,7 +12,7 @@ namespace lms_api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// [Authorize(Policy = "ViewReports")]
+[Authorize(Roles = "Admin")]
 public class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -20,12 +20,6 @@ public class ReportController : ControllerBase
     public ReportController(AppDbContext context)
     {
         _context = context;
-    }
-
-    [HttpGet("debug-claims")]
-    public IActionResult DebugClaims()
-    {
-        return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
     }
 
     private Guid CompanyId
@@ -173,37 +167,279 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
         return Ok(data);
     }
 
+    private IQueryable<Models.Leave> FilteredLeavesQuery(
+        DateTime start,
+        DateTime end,
+        string? department,
+        string? leaveType)
+    {
+        var query = _context.Leaves
+            .AsNoTracking()
+            .Include(l => l.User)
+            .Where(l => l.CompanyId == CompanyId &&
+                        l.StartDate <= end &&
+                        l.EndDate >= start);
+
+        if (!string.IsNullOrWhiteSpace(department))
+            query = query.Where(l => l.User != null && l.User.Department == department);
+
+        if (!string.IsNullOrWhiteSpace(leaveType))
+            query = query.Where(l => l.LeaveType == leaveType);
+
+        return query;
+    }
+
     // ============================================================
-    // 6️⃣ CSV Export
+    // 6️⃣ CSV Export (filtered)
     // ============================================================
     [HttpGet("export-csv")]
-    public async Task<IActionResult> ExportCsv()
+    public async Task<IActionResult> ExportCsv(
+        DateTime? start,
+        DateTime? end,
+        string? department,
+        string? leaveType)
     {
-        var leaves = await _context.Leaves
-            .Include(l => l.User)
-            .Where(l => l.CompanyId == CompanyId)
+        var startDate = start ?? new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endDate = end ?? DateTime.UtcNow;
+
+        var leaves = await FilteredLeavesQuery(startDate, endDate, department, leaveType)
+            .OrderByDescending(l => l.StartDate)
             .ToListAsync();
 
         var csv = new StringBuilder();
-        csv.AppendLine("Employee,Department,StartDate,EndDate,Status,Reason");
+        csv.AppendLine("Employee,Department,LeaveType,StartDate,EndDate,Status,Days,AppliedAt,ResolvedAt,Reason");
 
         foreach (var l in leaves)
         {
+            var days = (l.EndDate.Date - l.StartDate.Date).Days + 1;
             csv.AppendLine(
-                $"{l.User?.FullName ?? "Unknown"}," +
-                $"{l.User?.Department ?? "General"}," +
+                $"{EscapeCsv(l.User?.FullName ?? "Unknown")}," +
+                $"{EscapeCsv(l.User?.Department ?? "General")}," +
+                $"{EscapeCsv(l.LeaveType)}," +
                 $"{l.StartDate:yyyy-MM-dd}," +
                 $"{l.EndDate:yyyy-MM-dd}," +
                 $"{l.Status}," +
-                $"{l.Reason}"
+                $"{days}," +
+                $"{l.CreatedAt:yyyy-MM-dd HH:mm}," +
+                $"{(l.UpdatedAt.HasValue ? l.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm") : "")}," +
+                $"{EscapeCsv(l.Reason)}"
             );
         }
 
         return File(
             Encoding.UTF8.GetBytes(csv.ToString()),
             "text/csv",
-            "leave-report.csv"
+            $"hr-leave-report-{startDate:yyyyMMdd}-{endDate:yyyyMMdd}.csv"
         );
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
+    }
+
+    // ============================================================
+    // 8️⃣ HR Analytics Dashboard (unified, filterable)
+    // ============================================================
+    [HttpGet("hr-analytics")]
+    public async Task<IActionResult> GetHrAnalytics(
+        DateTime? start,
+        DateTime? end,
+        string? department,
+        string? leaveType)
+    {
+        var startDate = start ?? new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endDate = end ?? DateTime.UtcNow;
+        if (endDate < startDate)
+            return BadRequest("End date must be on or after start date.");
+
+        var leaves = await FilteredLeavesQuery(startDate, endDate, department, leaveType).ToListAsync();
+
+        var totalEmployees = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == CompanyId)
+            .CountAsync();
+
+        var departments = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == CompanyId && u.Department != null && u.Department != "")
+            .Select(u => u.Department!)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync();
+
+        var leaveTypes = leaves
+            .Select(l => l.LeaveType)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        var statusCounts = leaves
+            .GroupBy(l => l.Status)
+            .ToDictionary(g => g.Key.ToString(), g => g.Count());
+
+        int CountStatus(LeaveStatus status) =>
+            statusCounts.TryGetValue(status.ToString(), out var c) ? c : 0;
+
+        var approvedLeaves = leaves.Where(l => l.Status == LeaveStatus.Approved).ToList();
+        var avgApprovalHours = approvedLeaves
+            .Where(l => l.UpdatedAt.HasValue)
+            .Select(l => (l.UpdatedAt!.Value - l.CreatedAt).TotalHours)
+            .DefaultIfEmpty(0)
+            .Average();
+
+        var monthlyTrends = leaves
+            .GroupBy(l => l.StartDate.Month)
+            .Select(g => new
+            {
+                month = g.Key,
+                monthLabel = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(g.Key),
+                total = g.Count(),
+                approved = g.Count(x => x.Status == LeaveStatus.Approved),
+                pending = g.Count(x => x.Status == LeaveStatus.Pending),
+                rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
+            })
+            .OrderBy(x => x.month)
+            .ToList();
+
+        var departmentTrends = leaves
+            .GroupBy(l => l.User?.Department ?? "Unassigned")
+            .Select(g => new
+            {
+                department = g.Key,
+                total = g.Count(),
+                approved = g.Count(x => x.Status == LeaveStatus.Approved),
+                pending = g.Count(x => x.Status == LeaveStatus.Pending),
+                rejected = g.Count(x => x.Status == LeaveStatus.Rejected)
+            })
+            .OrderByDescending(x => x.total)
+            .ToList();
+
+        var leaveTypeDistribution = leaves
+            .GroupBy(l => string.IsNullOrWhiteSpace(l.LeaveType) ? "Other" : l.LeaveType)
+            .Select(g => new { leaveType = g.Key, count = g.Count() })
+            .OrderByDescending(x => x.count)
+            .ToList();
+
+        var employeeDistribution = leaves
+            .GroupBy(l => l.User?.FullName ?? "Unknown")
+            .Select(g => new
+            {
+                employee = g.Key,
+                leaveCount = g.Count(),
+                totalDays = g.Sum(l => (l.EndDate.Date - l.StartDate.Date).Days + 1)
+            })
+            .OrderByDescending(x => x.totalDays)
+            .Take(15)
+            .ToList();
+
+        var heatmap = BuildAbsenteeHeatmap(approvedLeaves, startDate, endDate);
+
+        var approvalTurnaround = approvedLeaves
+            .Where(l => l.UpdatedAt.HasValue)
+            .GroupBy(l => l.UpdatedAt!.Value.Month)
+            .Select(g =>
+            {
+                var hours = g.Select(l => (l.UpdatedAt!.Value - l.CreatedAt).TotalHours).ToList();
+                hours.Sort();
+                return new
+                {
+                    month = g.Key,
+                    monthLabel = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(g.Key),
+                    avgHours = Math.Round(hours.Average(), 1),
+                    medianHours = Math.Round(Percentile(hours, 0.5), 1),
+                    p90Hours = Math.Round(Percentile(hours, 0.9), 1),
+                    count = hours.Count
+                };
+            })
+            .OrderBy(x => x.month)
+            .ToList();
+
+        return Ok(new
+        {
+            filters = new { start = startDate, end = endDate, department, leaveType },
+            departments,
+            leaveTypes,
+            kpis = new
+            {
+                totalEmployees,
+                totalLeaves = leaves.Count,
+                pendingLeaves = CountStatus(LeaveStatus.Pending),
+                approvedLeaves = CountStatus(LeaveStatus.Approved),
+                rejectedLeaves = CountStatus(LeaveStatus.Rejected),
+                avgApprovalHours = Math.Round(avgApprovalHours, 1)
+            },
+            monthlyTrends,
+            departmentTrends,
+            leaveTypeDistribution,
+            employeeDistribution,
+            absenteeHeatmap = heatmap,
+            approvalTurnaround
+        });
+    }
+
+    private static double Percentile(List<double> sorted, double percentile)
+    {
+        if (sorted.Count == 0) return 0;
+        if (sorted.Count == 1) return sorted[0];
+        var index = (sorted.Count - 1) * percentile;
+        var lower = (int)Math.Floor(index);
+        var upper = (int)Math.Ceiling(index);
+        if (lower == upper) return sorted[lower];
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+    }
+
+    private static object BuildAbsenteeHeatmap(
+        List<Models.Leave> approvedLeaves,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        var dayLabels = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        var counts = new int[7, 5];
+
+        foreach (var leave in approvedLeaves)
+        {
+            var from = leave.StartDate.Date < startDate.Date ? startDate.Date : leave.StartDate.Date;
+            var to = leave.EndDate.Date > endDate.Date ? endDate.Date : leave.EndDate.Date;
+
+            for (var day = from; day <= to; day = day.AddDays(1))
+            {
+                var dow = ((int)day.DayOfWeek + 6) % 7;
+                var weekIndex = Math.Min((day.Day - 1) / 7, 4);
+                counts[dow, weekIndex]++;
+            }
+        }
+
+        var cells = new List<object>();
+        var max = 0;
+        for (var w = 0; w < 5; w++)
+        for (var d = 0; d < 7; d++)
+            max = Math.Max(max, counts[d, w]);
+
+        for (var w = 0; w < 5; w++)
+        for (var d = 0; d < 7; d++)
+        {
+            cells.Add(new
+            {
+                dayOfWeek = d,
+                dayLabel = dayLabels[d],
+                weekIndex = w,
+                weekLabel = $"W{w + 1}",
+                count = counts[d, w],
+                intensity = max == 0 ? 0 : Math.Round((double)counts[d, w] / max, 2)
+            });
+        }
+
+        return new
+        {
+            dayLabels,
+            weekLabels = new[] { "W1", "W2", "W3", "W4", "W5" },
+            maxCount = max,
+            cells
+        };
     }
 
     // ============================================================
@@ -212,9 +448,6 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
   [HttpGet("dashboard-analytics")]
 public async Task<IActionResult> GetDashboardAnalytics(int year)
 {
-    try
-    {
-        // ✅ Read CompanyId claim safely
         var companyIdClaim = User.FindFirst("CompanyId")?.Value;
 
         if (string.IsNullOrEmpty(companyIdClaim))
@@ -272,6 +505,21 @@ var end = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             })
             .ToListAsync();
 
+        var departmentBreakdown = await _context.Leaves
+            .AsNoTracking()
+            .Where(l => l.CompanyId == companyId &&
+                        l.StartDate >= start &&
+                        l.StartDate < end)
+            .Select(l => new { Department = l.User!.Department ?? "Unassigned" })
+            .GroupBy(x => x.Department)
+            .Select(g => new
+            {
+                department = g.Key,
+                total = g.Count()
+            })
+            .OrderByDescending(x => x.total)
+            .ToListAsync();
+
         // Convert month numbers → names
         var months = monthlyTrends
             .Select(x => System.Globalization.CultureInfo
@@ -292,14 +540,12 @@ var end = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
             casualLeaves = leaveTypes.FirstOrDefault(x => x.type == "Casual")?.count ?? 0,
             sickLeaves = leaveTypes.FirstOrDefault(x => x.type == "Sick")?.count ?? 0,
-            earnedLeaves = leaveTypes.FirstOrDefault(x => x.type == "Earned")?.count ?? 0
+            earnedLeaves = leaveTypes.FirstOrDefault(x => x.type == "Earned")?.count ?? 0,
+
+            departmentLabels = departmentBreakdown.Select(x => x.department).ToList(),
+            departmentTotals = departmentBreakdown.Select(x => x.total).ToList()
         };
 
         return Ok(result);
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, ex.ToString());
-    }
 }
 }

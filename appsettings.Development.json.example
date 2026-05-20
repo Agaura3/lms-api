@@ -1,0 +1,11 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=lms_dev;Username=postgres;Password=YOUR_PASSWORD"
+  },
+  "Jwt": {
+    "Key": "YOUR_DEV_JWT_SECRET_MIN_32_CHARACTERS"
+  },
+  "Resend": {
+    "ApiKey": "re_YOUR_RESEND_KEY"
+  }
+}

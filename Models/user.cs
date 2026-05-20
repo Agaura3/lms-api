@@ -47,5 +47,9 @@ namespace lms_api.Models;
 
         public Guid? ManagerId { get; set; }
 
-public User? Manager { get; set; }
+        public User? Manager { get; set; }
+
+        public int FailedLoginAttempts { get; set; }
+
+        public DateTime? LockoutEndUtc { get; set; }
     }

@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using lms_api.Data;
 using lms_api.Models;
 using lms_api.DTOs;
 using lms_api.Models.Enums;
 using Microsoft.AspNetCore.RateLimiting;
+using lms_api.Common;
+using lms_api.Services;
+using lms_api.Extensions;
 
 namespace lms_api.Controllers;
 
@@ -18,109 +18,101 @@ namespace lms_api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ITokenService _tokenService;
     private readonly IConfiguration _configuration;
+    private readonly IAuditService _audit;
+    private readonly ILoginAttemptService _loginAttempts;
 
-    public AuthController(AppDbContext context, IConfiguration configuration)
+    public AuthController(
+        AppDbContext context,
+        ITokenService tokenService,
+        IConfiguration configuration,
+        IAuditService audit,
+        ILoginAttemptService loginAttempts)
     {
         _context = context;
+        _tokenService = tokenService;
         _configuration = configuration;
+        _audit = audit;
+        _loginAttempts = loginAttempts;
     }
 
-   // 🔹 REGISTER (Company + First Admin)
-[HttpPost("register")]
-public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest request)
-{
-    var existingUser = await _context.Users
-        .FirstOrDefaultAsync(u => u.Email == request.Email);
-
-    if (existingUser != null)
-        return BadRequest(ApiResponse<string>.FailResponse("Email already exists"));
-
-    var existingCompany = await _context.Companies
-        .FirstOrDefaultAsync(c => c.Name == request.CompanyName);
-
-    if (existingCompany != null)
-        return BadRequest(ApiResponse<string>.FailResponse("Company already exists"));
-
-    var company = new Company
+    [HttpPost("register")]
+  [EnableRateLimiting("auth")]
+    public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest request)
     {
-        Id = Guid.NewGuid(),
-        Name = request.CompanyName
-    };
+        var existingUser = await _context.Users
+            .AnyAsync(u => u.Email == request.Email);
 
-    _context.Companies.Add(company);
+        if (existingUser)
+            return BadRequest(ApiResponse<string>.FailResponse("Email already exists"));
 
-    var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var existingCompany = await _context.Companies
+            .AnyAsync(c => c.Name == request.CompanyName);
 
-    var adminUser = new User
-    {
-        Id = Guid.NewGuid(),
-        Email = request.Email,
-        PasswordHash = passwordHash,
-        Role = UserRole.Admin,
-        CompanyId = company.Id,
-        FullName = request.Name
-    };
+        if (existingCompany)
+            return BadRequest(ApiResponse<string>.FailResponse("Company already exists"));
 
-    _context.Users.Add(adminUser);
+        var company = new Company
+        {
+            Id = Guid.NewGuid(),
+            Name = request.CompanyName
+        };
 
-    try
-    {
+        _context.Companies.Add(company);
+
+        var adminUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Role = UserRole.Admin,
+            CompanyId = company.Id,
+            FullName = request.Name
+        };
+
+        _context.Users.Add(adminUser);
+        _context.CompanySettings.Add(new CompanySettings { CompanyId = company.Id });
+
         await _context.SaveChangesAsync();
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ApiResponse<string>.FailResponse(ex.InnerException?.Message ?? ex.Message));
+        await _audit.LogAsync(adminUser.Id, company.Id, "REGISTER", "Company", company.Id);
+
+        return Ok(ApiResponse<string>.SuccessResponse("Company and Admin registered successfully"));
     }
 
-    return Ok(ApiResponse<string>.SuccessResponse("Company and Admin registered successfully"));
-}
-    // 🔹 REGISTER EMPLOYEE (Admin Only)
     [Authorize(Roles = "Admin")]
     [HttpPost("register-employee")]
     public async Task<IActionResult> RegisterEmployee([FromBody] RegisterEmployeeRequest request)
     {
         if (request.Role == UserRole.Admin)
-{
-            return BadRequest("Cannot create another admin");
-}
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return BadRequest(ApiResponse<string>.FailResponse("Cannot create another admin"));
 
-        if (userId == null)
+        var adminId = User.GetUserId();
+        var companyId = User.GetCompanyId();
+        if (adminId == null || companyId == null)
             return Unauthorized(ApiResponse<string>.FailResponse("Invalid token"));
 
-        var admin = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id.ToString() == userId);
-
-        if (admin == null)
-            return Unauthorized(ApiResponse<string>.FailResponse("Admin not found"));
-
-        var existingUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
-
-        if (existingUser != null)
+        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             return BadRequest(ApiResponse<string>.FailResponse("Email already exists"));
-
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
         var employee = new User
         {
             Id = Guid.NewGuid(),
             Email = request.Email,
-            PasswordHash = passwordHash,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = request.Role,
-            CompanyId = admin.CompanyId,
+            CompanyId = companyId.Value,
             FullName = request.Name,
             Department = request.Department
         };
 
         _context.Users.Add(employee);
         await _context.SaveChangesAsync();
+        await _audit.LogAsync(adminId.Value, companyId.Value, "CREATE", "User", employee.Id);
 
         return Ok(ApiResponse<string>.SuccessResponse("Employee registered successfully"));
     }
 
-    // 🔹 LOGIN
     [EnableRateLimiting("auth")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -131,25 +123,12 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
         if (user == null)
             return Unauthorized(ApiResponse<string>.FailResponse("Invalid credentials"));
 
-        var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        var (success, error) = await _loginAttempts.ValidateCredentialsAsync(user, request.Password);
+        if (!success)
+            return Unauthorized(ApiResponse<string>.FailResponse(error ?? "Invalid credentials"));
 
-        if (!isPasswordValid)
-            return Unauthorized(ApiResponse<string>.FailResponse("Invalid credentials"));
-
-        var accessToken = GenerateJwtToken(user);
-
-        var refreshToken = Guid.NewGuid().ToString();
-        var refreshTokenHash = BCrypt.Net.BCrypt.HashPassword(refreshToken);
-
-        var refreshTokenEntity = new RefreshToken
-        {
-            UserId = user.Id,
-            TokenHash = refreshTokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        };
-
-        _context.RefreshTokens.Add(refreshTokenEntity);
-        await _context.SaveChangesAsync();
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var (refreshToken, _) = await _tokenService.CreateRefreshTokenAsync(user);
 
         return Ok(ApiResponse<object>.SuccessResponse(new
         {
@@ -159,98 +138,107 @@ public async Task<IActionResult> Register([FromBody] RegisterCompanyRequest requ
         }, "Login successful"));
     }
 
-    // 🔹 TOKEN GENERATOR
-    private string GenerateJwtToken(User user)
+    [EnableRateLimiting("auth")]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
+        var user = await _tokenService.ValidateRefreshTokenAsync(request.RefreshToken);
+        if (user == null)
+            return Unauthorized(ApiResponse<string>.FailResponse("Invalid or expired refresh token"));
 
-        var claims = new List<Claim>
+        var existingTokens = await _context.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null && t.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync();
+
+        var matched = existingTokens.FirstOrDefault(t =>
+            BCrypt.Net.BCrypt.Verify(request.RefreshToken, t.TokenHash));
+
+        if (matched == null)
+            return Unauthorized(ApiResponse<string>.FailResponse("Invalid refresh token"));
+
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var (newRefresh, newEntity) = await _tokenService.CreateRefreshTokenAsync(user);
+        await _tokenService.RevokeRefreshTokenAsync(matched, newEntity.TokenHash);
+
+        return Ok(ApiResponse<object>.SuccessResponse(new
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim("CompanyId", user.CompanyId.ToString())
-        };
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(
-                Convert.ToDouble(_configuration["Jwt:DurationInMinutes"] ?? "15")
-            ),
-            Issuer = _configuration["Jwt:Issuer"],
-            Audience = _configuration["Jwt:Audience"],
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            )
-        };
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-
-        return tokenHandler.WriteToken(token);
+            accessToken,
+            refreshToken = newRefresh,
+            role = user.Role.ToString()
+        }, "Token refreshed"));
     }
 
-  [HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
-{
-    var user = await _context.Users
-        .FirstOrDefaultAsync(u => u.Email == request.Email);
-
-    if (user == null)
-        return Ok(ApiResponse<string>.SuccessResponse("If email exists, reset link will be sent"));
-
-    var resetToken = Guid.NewGuid().ToString();
-
-    var resetEntity = new PasswordResetToken
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
     {
-        UserId = user.Id,
-        Token = resetToken,
-        ExpiresAt = DateTime.UtcNow.AddHours(1)
-    };
+        var userId = User.GetUserId();
+        if (userId == null) return Unauthorized();
 
-    _context.PasswordResetTokens.Add(resetEntity);
-    await _context.SaveChangesAsync();
+        var tokens = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ToListAsync();
 
-    var resetLink = $"https://lmsorbit.netlify.app/reset-password?token={resetToken}";
+        foreach (var token in tokens)
+            token.RevokedAt = DateTime.UtcNow;
 
-    var email = new EmailQueue
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<string>.SuccessResponse("Logged out"));
+    }
+
+    [EnableRateLimiting("auth")]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
-        ToEmail = user.Email,
-        Subject = "Reset Your Password",
-        Body = $"Click this link to reset your password: {resetLink}",
-        Status = EmailStatus.Pending,
-        CreatedAt = DateTime.UtcNow
-    };
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
 
-    _context.EmailQueues.Add(email);
-    await _context.SaveChangesAsync();
+        if (user == null)
+            return Ok(ApiResponse<string>.SuccessResponse("If email exists, reset link will be sent"));
 
-    return Ok(ApiResponse<string>.SuccessResponse("Reset link sent"));
-}
+        var resetToken = Guid.NewGuid().ToString("N");
 
-[HttpPost("reset-password")]
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
-{
-    var tokenEntity = await _context.PasswordResetTokens
-        .FirstOrDefaultAsync(t => t.Token == request.Token && t.ExpiresAt > DateTime.UtcNow);
+        _context.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            UserId = user.Id,
+            Token = resetToken,
+            ExpiresAt = DateTime.UtcNow.AddHours(1)
+        });
 
-    if (tokenEntity == null)
-        return BadRequest(ApiResponse<string>.FailResponse("Invalid or expired token"));
+        var frontendUrl = _configuration["App:FrontendUrl"] ?? "http://localhost:4200";
+        var resetLink = $"{frontendUrl.TrimEnd('/')}/reset-password?token={resetToken}";
 
-    var user = await _context.Users
-        .FirstOrDefaultAsync(u => u.Id == tokenEntity.UserId);
+        _context.EmailQueues.Add(new EmailQueue
+        {
+            ToEmail = user.Email,
+            Subject = "Reset Your Password",
+            Body = $"Click this link to reset your password: {resetLink}",
+            Status = EmailStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        });
 
-    if (user == null)
-        return BadRequest(ApiResponse<string>.FailResponse("User not found"));
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<string>.SuccessResponse("Reset link sent"));
+    }
 
-    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+    [EnableRateLimiting("auth")]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var tokenEntity = await _context.PasswordResetTokens
+            .FirstOrDefaultAsync(t => t.Token == request.Token && t.ExpiresAt > DateTime.UtcNow);
 
-    _context.PasswordResetTokens.Remove(tokenEntity);
+        if (tokenEntity == null)
+            return BadRequest(ApiResponse<string>.FailResponse("Invalid or expired token"));
 
-    await _context.SaveChangesAsync();
+        var user = await _context.Users.FindAsync(tokenEntity.UserId);
+        if (user == null)
+            return BadRequest(ApiResponse<string>.FailResponse("User not found"));
 
-    return Ok(ApiResponse<string>.SuccessResponse("Password reset successful"));
-}
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        _context.PasswordResetTokens.Remove(tokenEntity);
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<string>.SuccessResponse("Password reset successful"));
+    }
 }

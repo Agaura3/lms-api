@@ -34,6 +34,8 @@ public class AppDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<EmailQueue> EmailQueues { get; set; }
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    public DbSet<Holiday> Holidays { get; set; }
+    public DbSet<CompanySettings> CompanySettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -119,6 +121,13 @@ public class AppDbContext : DbContext
         // --------------------------
         modelBuilder.Entity<LeavePolicy>()
             .HasIndex(lp => new { lp.CompanyId, lp.LeaveTypeName })
+            .IsUnique();
+
+        modelBuilder.Entity<Holiday>()
+            .HasIndex(h => new { h.CompanyId, h.Date });
+
+        modelBuilder.Entity<CompanySettings>()
+            .HasIndex(s => s.CompanyId)
             .IsUnique();
 
 

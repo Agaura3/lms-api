@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using lms_api.Common;
 using lms_api.Data;
 using lms_api.DTOs;
+using lms_api.Extensions;
+using lms_api.Models.Enums;
+using lms_api.Services;
 
 namespace lms_api.Controllers;
 
@@ -12,102 +16,159 @@ namespace lms_api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditService _audit;
 
-    public AdminController(AppDbContext context)
+    public AdminController(AppDbContext context, IAuditService audit)
     {
         _context = context;
+        _audit = audit;
     }
 
-    // ✅ GET EMPLOYEES
     [HttpGet("employees")]
-public async Task<IActionResult> GetEmployees()
-{
-    var employees = await _context.Users
-        .Where(u => u.Role != Models.Enums.UserRole.Admin)
-        .Select(u => new {
-            id = u.Id,
-            name = u.FullName,
-            email = u.Email,
-            role = u.Role.ToString(),
-            department = u.Department,
-            managerName = _context.Users
-                .Where(m => m.Id == u.ManagerId)
-                .Select(m => m.FullName)
-                .FirstOrDefault()
-        })
-        .ToListAsync();
+    public async Task<IActionResult> GetEmployees()
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId == null) return Unauthorized();
 
-    return Ok(employees);
-}
-    // ✅ DELETE EMPLOYEE
-    [HttpDelete("employees/{id}")]
+        var employees = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == companyId && u.Role != UserRole.Admin)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = u.FullName,
+                email = u.Email,
+                role = u.Role.ToString(),
+                department = u.Department,
+                managerId = u.ManagerId,
+                managerName = _context.Users
+                    .Where(m => m.Id == u.ManagerId)
+                    .Select(m => m.FullName)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
+
+        return Ok(employees);
+    }
+
+    [HttpDelete("employees/{id:guid}")]
     public async Task<IActionResult> DeleteEmployee(Guid id)
     {
-        var user = await _context.Users.FindAsync(id);
+        var companyId = User.GetCompanyId();
+        var userId = User.GetUserId();
+        if (companyId == null || userId == null) return Unauthorized();
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.CompanyId == companyId && u.Role != UserRole.Admin);
 
         if (user == null)
-            return NotFound("Employee not found");
+            return NotFound(ApiResponse<string>.FailResponse("Employee not found"));
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
+        await _audit.LogAsync(userId.Value, companyId.Value, "DELETE", "User", user.Id);
 
-        return Ok(new { message = "Employee deleted" });
+        return Ok(ApiResponse<string>.SuccessResponse("Employee deleted"));
     }
 
     [HttpPut("assign-manager")]
-public async Task<IActionResult> AssignManager([FromBody] AssignManagerRequest request)
-{
-    var employee = await _context.Users
-        .FirstOrDefaultAsync(u => u.Id == request.EmployeeId);
+    public async Task<IActionResult> AssignManager([FromBody] AssignManagerRequest request)
+    {
+        var companyId = User.GetCompanyId();
+        var userId = User.GetUserId();
+        if (companyId == null || userId == null) return Unauthorized();
 
-    if (employee == null)
-        return NotFound("Employee not found");
+        var employee = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == request.EmployeeId && u.CompanyId == companyId);
 
-    var manager = await _context.Users
-        .FirstOrDefaultAsync(u => u.Id == request.ManagerId);
+        if (employee == null)
+            return NotFound(ApiResponse<string>.FailResponse("Employee not found"));
 
-    if (manager == null)
-        return NotFound("Manager not found");
+        var manager = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == request.ManagerId && u.CompanyId == companyId);
 
-    if (manager.Role != Models.Enums.UserRole.Manager)
-        return BadRequest("Selected user is not a manager");
+        if (manager == null)
+            return NotFound(ApiResponse<string>.FailResponse("Manager not found"));
 
-    employee.ManagerId = manager.Id;
+        if (manager.Role != UserRole.Manager)
+            return BadRequest(ApiResponse<string>.FailResponse("Selected user is not a manager"));
 
-    await _context.SaveChangesAsync();
+        employee.ManagerId = manager.Id;
+        await _context.SaveChangesAsync();
+        await _audit.LogAsync(userId.Value, companyId.Value, "ASSIGN_MANAGER", "User", employee.Id);
 
-    return Ok(new { message = "Manager assigned successfully" });
-}
+        return Ok(ApiResponse<string>.SuccessResponse("Manager assigned successfully"));
+    }
 
-[HttpGet("managers")]
-public async Task<IActionResult> GetManagers()
-{
-    var managers = await _context.Users
-        .Where(u => u.Role == Models.Enums.UserRole.Manager)
-        .Select(u => new {
-            id = u.Id,
-            name = u.FullName,
-            email = u.Email,
-            department = u.Department
-        })
-        .ToListAsync();
+    [HttpGet("managers")]
+    public async Task<IActionResult> GetManagers()
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId == null) return Unauthorized();
 
-    return Ok(managers);
-}
+        var managers = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == companyId && u.Role == UserRole.Manager)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = u.FullName,
+                email = u.Email,
+                department = u.Department
+            })
+            .ToListAsync();
 
-[HttpGet("manager-employees/{managerId}")]
-public async Task<IActionResult> GetManagerEmployees(Guid managerId)
-{
-    var employees = await _context.Users
-        .Where(u => u.ManagerId == managerId)
-        .Select(u => new {
-            id = u.Id,
-            name = u.FullName,
-            email = u.Email,
-            department = u.Department
-        })
-        .ToListAsync();
+        return Ok(managers);
+    }
 
-    return Ok(employees);
-}
+    [HttpGet("manager/{id:guid}")]
+    public async Task<IActionResult> GetManager(Guid id)
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId == null) return Unauthorized();
+
+        var manager = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == id && u.CompanyId == companyId && u.Role == UserRole.Manager)
+            .Select(u => new
+            {
+                u.Id,
+                name = u.FullName,
+                u.Email,
+                u.Department
+            })
+            .FirstOrDefaultAsync();
+
+        if (manager == null)
+            return NotFound(ApiResponse<string>.FailResponse("Manager not found"));
+
+        return Ok(manager);
+    }
+
+    [HttpGet("manager-employees/{managerId:guid}")]
+    public async Task<IActionResult> GetManagerEmployees(Guid managerId)
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId == null) return Unauthorized();
+
+        var managerExists = await _context.Users.AnyAsync(u =>
+            u.Id == managerId && u.CompanyId == companyId && u.Role == UserRole.Manager);
+
+        if (!managerExists)
+            return NotFound(ApiResponse<string>.FailResponse("Manager not found"));
+
+        var employees = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == companyId && u.ManagerId == managerId)
+            .Select(u => new
+            {
+                u.Id,
+                name = u.FullName,
+                u.Email,
+                u.Department
+            })
+            .ToListAsync();
+
+        return Ok(employees);
+    }
 }

@@ -14,17 +14,17 @@ using lms_api.Middleware;
 using lms_api.Hubs;
 using lms_api.Services;
 using lms_api.BackgroundServices;
-using lms_api.Models;
-using System.Text.Json.Serialization;
-using StackExchange.Redis;
 using LMS.API.Services;
-using Resend;
+using System.Text.Json.Serialization;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using lms_api.Validators;
+using lms_api.Common;
+using Microsoft.AspNetCore.Mvc;
 
+var builder = WebApplication.CreateBuilder(args);
 
-Console.WriteLine("STEP 1: Starting application");
-
-// LOGGING CONFIGURATION
-Serilog.Log.Logger = new LoggerConfiguration()
+Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
@@ -32,78 +32,70 @@ Serilog.Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
 
-Console.WriteLine("STEP 2: Logger configured");
-
-var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-Console.WriteLine("STEP 3: Builder created");
-
-// DATABASE CONFIGURATION
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-Console.WriteLine("STEP 4: Connection string loaded");
-
-if (string.IsNullOrWhiteSpace(connectionString))
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    throw new Exception("❌ Database connection string is not configured.");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new Exception("Database connection string is not configured.");
+
+    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 }
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseNpgsql(connectionString);
-});
-
-Console.WriteLine("STEP 5: DbContext configured");
-
-// CONTROLLERS
 builder.Services.AddControllers()
-.AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var message = string.Join("; ",
+                context.ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
 
-Console.WriteLine("STEP 6: Controllers added");
+            return new BadRequestObjectResult(ApiResponse<string>.FailResponse(
+                string.IsNullOrWhiteSpace(message) ? "Validation failed" : message));
+        };
+    });
 
-// SIGNALR
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
+
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
-Console.WriteLine("STEP 7: SignalR configured");
 
-// HEALTH CHECKS
-builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "PostgreSQL");
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString!, name: "PostgreSQL");
+}
+else
+{
+    builder.Services.AddHealthChecks();
+}
 
-Console.WriteLine("STEP 8: HealthChecks configured");
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:4200" };
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "https://lms-ui-e5hz.vercel.app",
-                "http://localhost:4200",
-                "https://lmsorbit.netlify.app",
-                "https://deeppink-toad-657096.hostingersite.com"
-            )
+        policy.WithOrigins(corsOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
-Console.WriteLine("STEP 9: CORS configured");
-
-// SWAGGER
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "LMS API",
-        Version = "v1"
-    });
-
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "LMS API", Version = "v1" });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -112,35 +104,23 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT",
         In = ParameterLocation.Header
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
-Console.WriteLine("STEP 10: Swagger configured");
-
-// JWT AUTHENTICATION
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
              ?? builder.Configuration["Jwt:Key"];
 
-Console.WriteLine("STEP 11: JWT key loaded");
-
 if (string.IsNullOrWhiteSpace(jwtKey))
-{
-    throw new Exception(" JWT key is not configured.");
-}
+    throw new Exception("JWT key is not configured.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -149,9 +129,8 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
-
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -163,13 +142,21 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
+                context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
 });
 
-Console.WriteLine("STEP 12: JWT configured");
-
-// AUTHORIZATION
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
-
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ApplyLeave", p => p.Requirements.Add(new PermissionRequirement("ApplyLeave")));
@@ -182,79 +169,60 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ManagementAccess", p => p.Requirements.Add(new PermissionRequirement("ManagementAccess")));
 });
 
-Console.WriteLine("STEP 13: Authorization configured");
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IDashboardBroadcastService, DashboardBroadcastService>();
+builder.Services.AddScoped<ILeaveCalculationService, LeaveCalculationService>();
+builder.Services.AddScoped<ILoginAttemptService, LoginAttemptService>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 
-// EMAIL CONFIGURATION FOR RESEND
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<EmailBackgroundService>();
+}
 builder.Services.AddHttpClient();
 
-builder.Services.Configure<ResendClientOptions>(options =>
-{
-    options.ApiToken = builder.Configuration["Resend:ApiKey"];
-});
-
-builder.Services.AddTransient<ResendClient>();
-
-// EMAIL BACKGROUND SERVICE
-builder.Services.AddScoped<IEmailService, ResendEmailService>();
-builder.Services.AddHostedService<EmailBackgroundService>();
-
-Console.WriteLine("STEP 14: Email service configured");
-// RATE LIMITING
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("global", opt =>
-    {
-        opt.PermitLimit = 100;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 10;
-    });
-
     options.AddFixedWindowLimiter("auth", opt =>
     {
-        opt.PermitLimit = 5;
+        opt.PermitLimit = 10;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
     });
-
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-Console.WriteLine("STEP 15: Rate limiter configured");
-
-// BUILD APP
 var app = builder.Build();
 
-Console.WriteLine("STEP 16: App built");
-
 app.UseSerilogRequestLogging();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<ValidationExceptionMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseRateLimiter();
 app.UseCors("AllowFrontend");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<NotificationHub>("/notificationHub");
-
+app.MapHub<NotificationHub>("/notificationHub").RequireAuthorization();
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
-Console.WriteLine("STEP 17: Endpoints mapped");
-
-// AUTO MIGRATION
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
-    Console.WriteLine("STEP 18: Starting database migration");
-
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
-
-    Console.WriteLine("STEP 19: Database migration completed");
 }
 
-Console.WriteLine("STEP 20: Application starting...");
-
 app.Run();
+
+public partial class Program { }
