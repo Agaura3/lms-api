@@ -2,6 +2,7 @@ using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.RateLimiting;
@@ -22,6 +23,9 @@ using lms_api.Validators;
 using lms_api.Common;
 using Microsoft.AspNetCore.Mvc;
 
+// Allow DateTime values read/written with PostgreSQL (query-string dates are often Unspecified).
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
@@ -40,7 +44,9 @@ if (!builder.Environment.IsEnvironment("Testing"))
     if (string.IsNullOrWhiteSpace(connectionString))
         throw new Exception("Database connection string is not configured.");
 
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(connectionString)
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 }
 
 builder.Services.AddControllers()

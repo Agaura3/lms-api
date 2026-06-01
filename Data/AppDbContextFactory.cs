@@ -11,7 +11,8 @@ namespace lms_api.Data
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile("appsettings.Development.json", optional: true)
                 .Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();

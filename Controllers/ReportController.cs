@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using lms_api.Data;
 using lms_api.Models.Enums;
+using lms_api.Common;
 using System.Linq;
 
 namespace lms_api.Controllers;
@@ -22,18 +23,38 @@ public class ReportController : ControllerBase
         _context = context;
     }
 
-    private Guid CompanyId
+    private sealed class LeaveReportRow
     {
-        get
+        public LeaveStatus Status { get; init; }
+        public string LeaveType { get; init; } = string.Empty;
+        public DateTime StartDate { get; init; }
+        public DateTime EndDate { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+        public string Department { get; init; } = "Unassigned";
+        public string FullName { get; init; } = "Unknown";
+    }
+
+    private bool TryGetCompanyId(out Guid companyId)
+    {
+        var claimValue = User.FindFirst("CompanyId")?.Value
+            ?? User.Claims.FirstOrDefault(c =>
+                c.Type.Contains("CompanyId", StringComparison.OrdinalIgnoreCase))?.Value;
+
+        if (string.IsNullOrWhiteSpace(claimValue) || !Guid.TryParse(claimValue, out companyId))
         {
-            var claim = User.Claims
-                .FirstOrDefault(c => c.Type.ToLower().Contains("companyid"));
-
-            if (claim == null)
-                throw new Exception("CompanyId claim missing");
-
-            return Guid.Parse(claim.Value);
+            companyId = default;
+            return false;
         }
+
+        return true;
+    }
+
+    private IActionResult? RequireCompanyId(out Guid companyId)
+    {
+        if (TryGetCompanyId(out companyId))
+            return null;
+        return Unauthorized(new { message = "CompanyId missing from token." });
     }
 
    
@@ -44,9 +65,15 @@ public class ReportController : ControllerBase
     [HttpGet("leave-summary")]
     public async Task<IActionResult> GetLeaveSummary(DateTime start, DateTime end)
     {
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
+
+        start = DateTimeUtil.ToUtcStartOfDay(start);
+        end = DateTimeUtil.ToUtcEndOfDay(end);
+
         var summary = await _context.Leaves
             .AsNoTracking()
-            .Where(l => l.CompanyId == CompanyId &&
+            .Where(l => l.CompanyId == companyId &&
                         l.StartDate >= start &&
                         l.EndDate <= end)
             .GroupBy(l => l.Status)
@@ -66,9 +93,12 @@ public class ReportController : ControllerBase
    [HttpGet("monthly-trends")]
 public async Task<IActionResult> GetMonthlyTrends(int year)
 {
+    if (RequireCompanyId(out var companyId) is { } authError)
+        return authError;
+
     var data = await _context.Leaves
         .AsNoTracking()
-        .Where(l => l.CompanyId == CompanyId &&
+        .Where(l => l.CompanyId == companyId &&
                     l.StartDate.Year == year)
         .GroupBy(l => l.StartDate.Month)
         .Select(g => new
@@ -91,9 +121,12 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     [HttpGet("employee-breakdown")]
     public async Task<IActionResult> GetEmployeeBreakdown()
     {
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
+
         var data = await _context.Leaves
             .AsNoTracking()
-            .Where(l => l.CompanyId == CompanyId)
+            .Where(l => l.CompanyId == companyId)
             .Select(l => new
             {
                 EmployeeName = l.User!.FullName,
@@ -120,9 +153,12 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     [HttpGet("leave-type-analysis")]
     public async Task<IActionResult> GetLeaveTypeAnalysis()
     {
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
+
         var data = await _context.Leaves
             .AsNoTracking()
-            .Where(l => l.CompanyId == CompanyId)
+            .Where(l => l.CompanyId == companyId)
             .GroupBy(l => l.LeaveType)
             .Select(g => new
             {
@@ -144,9 +180,12 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     [HttpGet("department-analysis")]
     public async Task<IActionResult> GetDepartmentAnalysis()
     {
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
+
         var data = await _context.Leaves
             .AsNoTracking()
-            .Where(l => l.CompanyId == CompanyId)
+            .Where(l => l.CompanyId == companyId)
             .Select(l => new
             {
                 Department = l.User!.Department,
@@ -168,6 +207,7 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     }
 
     private IQueryable<Models.Leave> FilteredLeavesQuery(
+        Guid companyId,
         DateTime start,
         DateTime end,
         string? department,
@@ -176,7 +216,7 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
         var query = _context.Leaves
             .AsNoTracking()
             .Include(l => l.User)
-            .Where(l => l.CompanyId == CompanyId &&
+            .Where(l => l.CompanyId == companyId &&
                         l.StartDate <= end &&
                         l.EndDate >= start);
 
@@ -189,6 +229,40 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
         return query;
     }
 
+    private async Task<List<LeaveReportRow>> FetchLeaveReportRowsAsync(
+        Guid companyId,
+        DateTime start,
+        DateTime end,
+        string? department,
+        string? leaveType)
+    {
+        var query = _context.Leaves
+            .AsNoTracking()
+            .Where(l => l.CompanyId == companyId &&
+                        l.StartDate <= end &&
+                        l.EndDate >= start);
+
+        if (!string.IsNullOrWhiteSpace(department))
+            query = query.Where(l => l.User != null && l.User.Department == department);
+
+        if (!string.IsNullOrWhiteSpace(leaveType))
+            query = query.Where(l => l.LeaveType == leaveType);
+
+        return await query
+            .Select(l => new LeaveReportRow
+            {
+                Status = l.Status,
+                LeaveType = l.LeaveType ?? string.Empty,
+                StartDate = l.StartDate,
+                EndDate = l.EndDate,
+                CreatedAt = l.CreatedAt,
+                UpdatedAt = l.UpdatedAt,
+                Department = l.User != null ? l.User.Department : "Unassigned",
+                FullName = l.User != null ? l.User.FullName : "Unknown"
+            })
+            .ToListAsync();
+    }
+
     // ============================================================
     // 6️⃣ CSV Export (filtered)
     // ============================================================
@@ -199,10 +273,12 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
         string? department,
         string? leaveType)
     {
-        var startDate = start ?? new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var endDate = end ?? DateTime.UtcNow;
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
 
-        var leaves = await FilteredLeavesQuery(startDate, endDate, department, leaveType)
+        var (startDate, endDate) = DateTimeUtil.NormalizeReportRange(start, end);
+
+        var leaves = await FilteredLeavesQuery(companyId, startDate, endDate, department, leaveType)
             .OrderByDescending(l => l.StartDate)
             .ToListAsync();
 
@@ -250,21 +326,25 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
         string? department,
         string? leaveType)
     {
-        var startDate = start ?? new DateTime(DateTime.UtcNow.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var endDate = end ?? DateTime.UtcNow;
-        if (endDate < startDate)
-            return BadRequest("End date must be on or after start date.");
+        if (RequireCompanyId(out var companyId) is { } authError)
+            return authError;
 
-        var leaves = await FilteredLeavesQuery(startDate, endDate, department, leaveType).ToListAsync();
+        var (startDate, endDate) = DateTimeUtil.NormalizeReportRange(start, end);
+        if (endDate < startDate)
+            return BadRequest(new { message = "End date must be on or after start date." });
+
+        try
+        {
+            var leaves = await FetchLeaveReportRowsAsync(companyId, startDate, endDate, department, leaveType);
 
         var totalEmployees = await _context.Users
             .AsNoTracking()
-            .Where(u => u.CompanyId == CompanyId)
+            .Where(u => u.CompanyId == companyId)
             .CountAsync();
 
         var departments = await _context.Users
             .AsNoTracking()
-            .Where(u => u.CompanyId == CompanyId && u.Department != null && u.Department != "")
+            .Where(u => u.CompanyId == companyId && u.Department != null && u.Department != "")
             .Select(u => u.Department!)
             .Distinct()
             .OrderBy(d => d)
@@ -306,7 +386,7 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
             .ToList();
 
         var departmentTrends = leaves
-            .GroupBy(l => l.User?.Department ?? "Unassigned")
+            .GroupBy(l => l.Department)
             .Select(g => new
             {
                 department = g.Key,
@@ -325,7 +405,7 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
             .ToList();
 
         var employeeDistribution = leaves
-            .GroupBy(l => l.User?.FullName ?? "Unknown")
+            .GroupBy(l => l.FullName)
             .Select(g => new
             {
                 employee = g.Key,
@@ -379,6 +459,11 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
             absenteeHeatmap = heatmap,
             approvalTurnaround
         });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to build HR analytics.", detail = ex.Message });
+        }
     }
 
     private static double Percentile(List<double> sorted, double percentile)
@@ -393,7 +478,7 @@ public async Task<IActionResult> GetMonthlyTrends(int year)
     }
 
     private static object BuildAbsenteeHeatmap(
-        List<Models.Leave> approvedLeaves,
+        List<LeaveReportRow> approvedLeaves,
         DateTime startDate,
         DateTime endDate)
     {
