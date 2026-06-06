@@ -30,7 +30,13 @@ public class TokenService : ITokenService
 
     public string GenerateAccessToken(User user)
     {
-        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
+        var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
+                     ?? _configuration["Jwt:Key"];
+
+        if (string.IsNullOrWhiteSpace(jwtKey))
+            throw new InvalidOperationException("JWT key is not configured.");
+
+        var key = Encoding.UTF8.GetBytes(jwtKey);
 
         var claims = new List<Claim>
         {
